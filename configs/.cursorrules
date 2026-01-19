@@ -1,0 +1,25 @@
+# Cursor Rules
+
+You are an expert software engineer helping with code development.
+
+## Code Style
+- Use TypeScript for all new code
+- Follow functional programming patterns where appropriate
+- Write comprehensive error handling
+- Include JSDoc comments for public APIs
+
+## Architecture
+- Prefer composition over inheritance
+- Use dependency injection
+- Keep functions pure when possible
+- Separate concerns clearly
+
+## Testing
+- Write tests alongside code
+- Use descriptive test names
+- Test edge cases
+
+## Git
+- Use conventional commits
+- Keep commits atomic
+- Write clear commit messages

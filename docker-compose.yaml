@@ -1,0 +1,68 @@
+version: '3.8'
+
+services:
+  ai-hub:
+    build: .
+    container_name: ai-hub
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - LOG_LEVEL=info
+      # MCP tokens (set in .env file)
+      - STRIPE_MCP_TOKEN=${STRIPE_MCP_TOKEN}
+      - VERCEL_TOKEN=${VERCEL_TOKEN}
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
+    volumes:
+      # Persist logs
+      - ./logs:/app/logs
+      # Mount config for hot-reload (optional)
+      - ./aih-config.yaml:/app/aih-config.yaml:ro
+      # Mount resources (read-only)
+      - ./skills:/app/skills:ro
+      - ./configs:/app/configs:ro
+      - ./plugins:/app/plugins:ro
+      - ./hooks:/app/hooks:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+
+  # Optional: Redis for caching and session management
+  redis:
+    image: redis:7-alpine
+    container_name: ai-hub-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+    profiles:
+      - with-redis
+
+  # Optional: Nginx reverse proxy with SSL
+  nginx:
+    image: nginx:alpine
+    container_name: ai-hub-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./certs:/etc/nginx/certs:ro
+    depends_on:
+      - ai-hub
+    restart: unless-stopped
+    profiles:
+      - with-nginx
+
+volumes:
+  redis-data:
+
+networks:
+  default:
+    name: ai-hub-network

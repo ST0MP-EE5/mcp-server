@@ -1,0 +1,132 @@
+version: "1.0"
+name: "my-ai-hub"  # Rename this to your hub name
+
+# Authentication
+auth:
+  api_keys:
+    # Generate keys with: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+    # Then hash with: node -e "console.log('sha256:' + require('crypto').createHash('sha256').update('YOUR_KEY').digest('hex'))"
+    - name: "claude-ai"
+      key_hash: "sha256:your_hashed_key_here"  # Replace with actual hash
+      permissions: ["*"]
+      
+    - name: "cursor"
+      key_hash: "sha256:another_hashed_key"
+      permissions: ["mcps/*", "skills/*", "configs/*"]
+      
+    - name: "readonly"
+      key_hash: "sha256:readonly_key_hash"
+      permissions: ["skills/*", "configs/*"]
+
+# MCP Registry
+mcps:
+  # External MCPs (proxied through hub)
+  external:
+    - name: "stripe"
+      url: "https://mcp.stripe.com"
+      auth:
+        type: "bearer"
+        token: "${STRIPE_MCP_TOKEN}"
+      enabled: true
+      
+    - name: "vercel"
+      url: "https://mcp.vercel.com"
+      auth:
+        type: "oauth"
+        token: "${VERCEL_TOKEN}"
+      enabled: true
+      
+    # Add your own external MCPs here. Example:
+    # - name: "your-mcp"
+    #   url: "https://your-mcp-server.com/mcp"
+    #   auth:
+    #     type: "bearer"
+    #     token: "${YOUR_MCP_TOKEN}"
+    #   enabled: true
+
+    - name: "github"
+      url: "https://mcp.github.com"
+      auth:
+        type: "bearer"
+        token: "${GITHUB_TOKEN}"
+      enabled: false  # Enable when ready
+
+  # Self-hosted MCPs (running on this server)
+  # Add your local MCPs here when implemented. Example:
+  local: []
+    # - name: "your-local-mcp"
+    #   path: "./mcps/your-local-mcp"
+    #   port: 3001
+    #   enabled: true
+
+# Skills (Instruction Sets)
+# Add your own skills here. Each skill is a markdown file with instructions.
+skills:
+  - name: "code-review"
+    description: "Thorough code review focusing on security, performance, and maintainability"
+    file: "./skills/code-review.md"
+    tags: ["development", "security", "review"]
+
+  # Add more skills as needed. Example:
+  # - name: "your-skill"
+  #   description: "Description of what this skill does"
+  #   file: "./skills/your-skill.md"
+  #   tags: ["tag1", "tag2"]
+
+# Plugins (Extended Capabilities)
+plugins:
+  - name: "web-scraper"
+    description: "Advanced web scraping with JavaScript rendering support"
+    file: "./plugins/web-scraper.js"
+    runtime: "node"
+    
+  - name: "pdf-processor"
+    description: "Extract text, tables, and metadata from PDFs"
+    file: "./plugins/pdf-processor.py"
+    runtime: "python"
+    
+  - name: "image-analyzer"
+    description: "Analyze images using vision models"
+    file: "./plugins/image-analyzer.js"
+    runtime: "node"
+
+# Hooks (Event Handlers)
+hooks:
+  - name: "on-conversation-start"
+    trigger: "conversation.start"
+    action: "./hooks/inject-context.js"
+    
+  - name: "on-tool-error"
+    trigger: "tool.error"
+    action: "./hooks/notify-discord.js"
+    
+  - name: "on-daily-summary"
+    trigger: "cron:0 0 * * *"
+    action: "./hooks/daily-summary.js"
+
+# IDE/Client Configurations
+configs:
+  claude:
+    file: "./configs/.claude"
+    
+  claude_md:
+    file: "./configs/CLAUDE.md"
+    
+  cursor:
+    file: "./configs/.cursorrules"
+    
+  windsurf:
+    file: "./configs/.windsurfrules"
+    
+  continue:
+    file: "./configs/continue-config.json"
+    
+  aider:
+    file: "./configs/.aider.conf.yml"
+
+# Secrets configuration
+secrets:
+  provider: "env"  # Options: env, vault, doppler, aws-secrets
+  # For vault:
+  # vault_addr: "https://vault.example.com"
+  # vault_path: "secret/ai-hub"
