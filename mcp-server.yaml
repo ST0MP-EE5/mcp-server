@@ -4,19 +4,9 @@ name: "my-mcp-server"  # Rename this to your server name
 # Authentication
 auth:
   api_keys:
-    # Generate keys with: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
-    # Then hash with: node -e "console.log('sha256:' + require('crypto').createHash('sha256').update('YOUR_KEY').digest('hex'))"
-    - name: "claude-ai"
-      key_hash: "sha256:your_hashed_key_here"  # Replace with actual hash
+    - name: "main"
+      key_hash: "sha256:bc2a4de2f84369819b8b544eb4ab5e405d53124ff626ccfbd52d38c37f235060"
       permissions: ["*"]
-      
-    - name: "cursor"
-      key_hash: "sha256:another_hashed_key"
-      permissions: ["mcps/*", "skills/*", "configs/*"]
-      
-    - name: "readonly"
-      key_hash: "sha256:readonly_key_hash"
-      permissions: ["skills/*", "configs/*"]
 
 # MCP Registry
 mcps:
