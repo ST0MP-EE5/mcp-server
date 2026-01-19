@@ -12,7 +12,7 @@ const LIMITS = {
   MAX_CONNECTIONS_PER_KEY: 10,
   MAX_TOTAL_CONNECTIONS: 100,
   CONNECTION_TIMEOUT_MS: 3600000,        // 1 hour
-  HEARTBEAT_INTERVAL_MS: 30000,          // 30 seconds
+  HEARTBEAT_INTERVAL_MS: 15000,          // 15 seconds (more frequent for proxy keepalive)
   STALE_CONNECTION_MS: 60000,            // 60 seconds
   TOOL_CALL_TIMEOUT_MS: 60000,           // 60 seconds
   MCP_CONNECTION_TIMEOUT_MS: 30000,      // 30 seconds
@@ -696,6 +696,7 @@ export function createMCPGateway(app: Express, basePath: string): void {
   // -------------------------------------------------------------------------
   
   app.post(`${basePath}/messages`, async (req: Request, res: Response) => {
+    logger.info(`POST /messages received`, { clientId: req.query.clientId, method: req.body?.method });
     const clientId = req.query.clientId as string;
     const client = clients.get(clientId);
     
