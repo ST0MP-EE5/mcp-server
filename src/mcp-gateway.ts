@@ -639,7 +639,10 @@ export function createMCPGateway(app: Express, basePath: string): void {
     // Flush headers immediately to establish the SSE connection
     res.flushHeaders();
 
-    // Send initial comment to push through any proxy buffers
+    // Send initial padding to push through proxy buffers
+    // Some proxies have minimum buffer thresholds (typically 1KB-4KB)
+    const padding = ':' + ' '.repeat(2048) + '\n\n';
+    res.write(padding);
     res.write(': connected\n\n');
 
     const clientId = uuidv4();
