@@ -318,3 +318,72 @@ aih status | jq .connections        # Check limits
 # Config issues
 cat aih-config.yaml | python3 -c "import yaml,sys; yaml.safe_load(sys.stdin)" && echo "valid"
 ```
+
+## DigitalOcean MCP Tools
+
+The DigitalOcean MCP provides tools for managing DO infrastructure.
+
+### Natural Language Mappings
+
+| User Says | Tool |
+|-----------|------|
+| "list my droplets" | `digitalocean__do__list_droplets` |
+| "create a droplet" | `digitalocean__do__create_droplet` |
+| "delete droplet 123" | `digitalocean__do__delete_droplet` |
+| "show my apps" | `digitalocean__do__list_apps` |
+| "deploy an app" | `digitalocean__do__create_app` |
+| "list databases" | `digitalocean__do__list_databases` |
+| "check my balance" | `digitalocean__do__get_balance` |
+| "list DNS records for example.com" | `digitalocean__do__list_records` |
+| "what regions are available" | `digitalocean__do__list_regions` |
+| "what droplet sizes can I use" | `digitalocean__do__list_sizes` |
+
+### Tool Categories
+
+**Droplets (VMs):**
+- `digitalocean__do__list_droplets` - List all droplets
+- `digitalocean__do__get_droplet` - Get droplet details
+- `digitalocean__do__create_droplet` - Create droplet
+- `digitalocean__do__delete_droplet` - Delete droplet (destructive)
+- `digitalocean__do__reboot_droplet` - Reboot droplet
+- `digitalocean__do__power_droplet` - Power on/off/cycle
+- `digitalocean__do__resize_droplet` - Resize droplet
+- `digitalocean__do__list_regions` - List regions
+- `digitalocean__do__list_sizes` - List sizes
+- `digitalocean__do__list_images` - List OS images
+
+**App Platform:**
+- `digitalocean__do__list_apps` - List apps
+- `digitalocean__do__get_app` - Get app details
+- `digitalocean__do__create_app` - Create app
+- `digitalocean__do__delete_app` - Delete app (destructive)
+- `digitalocean__do__get_app_logs` - View logs
+- `digitalocean__do__restart_app` - Restart app
+
+**Databases:**
+- `digitalocean__do__list_databases` - List databases
+- `digitalocean__do__get_database` - Get DB details
+- `digitalocean__do__create_database` - Create database
+- `digitalocean__do__delete_database` - Delete database (destructive)
+
+**Domains & DNS:**
+- `digitalocean__do__list_domains` - List domains
+- `digitalocean__do__list_records` - List DNS records
+- `digitalocean__do__create_record` - Create DNS record
+- `digitalocean__do__delete_record` - Delete record (destructive)
+
+**Account:**
+- `digitalocean__do__get_account` - Account info
+- `digitalocean__do__get_balance` - Billing balance
+
+### Setup
+
+Add to `.env`:
+```
+DO_API_TOKEN=dop_v1_your_token_here
+```
+
+Build the MCP:
+```bash
+cd mcps/digitalocean && npm install && npm run build
+```

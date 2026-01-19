@@ -52,11 +52,16 @@ mcps:
       enabled: false  # Enable when ready
 
   # Self-hosted MCPs (running on this server)
-  # Add your local MCPs here when implemented. Example:
-  local: []
+  local:
+    - name: "digitalocean"
+      path: "./mcps/digitalocean"
+      port: 3001
+      enabled: true  # Requires DO_API_TOKEN in .env
+
+    # Add more local MCPs as needed:
     # - name: "your-local-mcp"
     #   path: "./mcps/your-local-mcp"
-    #   port: 3001
+    #   port: 3002
     #   enabled: true
 
 # Skills (Instruction Sets)
@@ -127,6 +132,8 @@ configs:
 # Secrets configuration
 secrets:
   provider: "env"  # Options: env, vault, doppler, aws-secrets
+  mappings:
+    DO_API_TOKEN: "${DO_API_TOKEN}"  # DigitalOcean API token
   # For vault:
   # vault_addr: "https://vault.example.com"
   # vault_path: "secret/ai-hub"

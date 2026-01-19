@@ -351,31 +351,228 @@ async function routeToExternalMCP(
   if (!allowed) {
     throw new Error(reason);
   }
-  
+
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeout);
-  
+
   try {
     // This is a simplified implementation
     // Real implementation would maintain SSE connection to external MCP
     // and route tool calls through it
-    
+
     logger.debug(`Routing ${toolName} to ${mcp.name}`, { args });
-    
+
     // Placeholder for actual MCP client implementation
     throw new Error(`External MCP routing not yet implemented for ${mcp.name}`);
-    
+
   } catch (error: any) {
     if (error.name === 'AbortError') {
       recordFailure(mcp.name);
       throw new Error(`Tool call to ${mcp.name} timed out after ${timeout}ms`);
     }
-    
+
     recordFailure(mcp.name);
     throw error;
-    
+
   } finally {
     clearTimeout(timeoutId);
+  }
+}
+
+// ============================================================================
+// LOCAL MCP ROUTING
+// ============================================================================
+
+import { spawn, ChildProcess } from 'child_process';
+import * as path from 'path';
+
+// Store for local MCP processes
+const localMCPProcesses = new Map<string, {
+  process: ChildProcess;
+  tools: MCPTool[];
+  ready: boolean;
+  pendingCalls: Map<string | number, { resolve: (val: any) => void; reject: (err: any) => void }>;
+}>();
+
+async function startLocalMCP(mcp: MCPConfig): Promise<void> {
+  if (localMCPProcesses.has(mcp.name)) {
+    return; // Already started
+  }
+
+  const mcpPath = mcp.path;
+  if (!mcpPath) {
+    throw new Error(`Local MCP ${mcp.name} has no path configured`);
+  }
+
+  const distPath = path.join(mcpPath, 'dist', 'index.js');
+
+  logger.info(`Starting local MCP: ${mcp.name}`, { path: distPath });
+
+  const child = spawn('node', [distPath], {
+    stdio: ['pipe', 'pipe', 'pipe'],
+    env: { ...process.env },
+    cwd: mcpPath
+  });
+
+  const mcpState = {
+    process: child,
+    tools: [] as MCPTool[],
+    ready: false,
+    pendingCalls: new Map<string | number, { resolve: (val: any) => void; reject: (err: any) => void }>()
+  };
+
+  localMCPProcesses.set(mcp.name, mcpState);
+
+  // Handle stdout (JSON-RPC responses)
+  let buffer = '';
+  child.stdout?.on('data', (data: Buffer) => {
+    buffer += data.toString();
+
+    // Try to parse complete JSON messages
+    const lines = buffer.split('\n');
+    buffer = lines.pop() || ''; // Keep incomplete line in buffer
+
+    for (const line of lines) {
+      if (!line.trim()) continue;
+      try {
+        const message = JSON.parse(line);
+
+        // Handle response to pending call
+        if (message.id !== undefined && mcpState.pendingCalls.has(message.id)) {
+          const pending = mcpState.pendingCalls.get(message.id)!;
+          mcpState.pendingCalls.delete(message.id);
+
+          if (message.error) {
+            pending.reject(new Error(message.error.message || 'MCP error'));
+          } else {
+            pending.resolve(message.result);
+          }
+        }
+      } catch (e) {
+        // Ignore parse errors for incomplete messages
+      }
+    }
+  });
+
+  // Handle stderr (logs)
+  child.stderr?.on('data', (data: Buffer) => {
+    logger.debug(`[${mcp.name}] ${data.toString().trim()}`);
+  });
+
+  child.on('error', (error) => {
+    logger.error(`Local MCP ${mcp.name} error`, { error: error.message });
+    localMCPProcesses.delete(mcp.name);
+  });
+
+  child.on('exit', (code) => {
+    logger.info(`Local MCP ${mcp.name} exited`, { code });
+    localMCPProcesses.delete(mcp.name);
+  });
+
+  // Initialize the MCP
+  await sendToLocalMCP(mcp.name, {
+    jsonrpc: '2.0',
+    id: 'init',
+    method: 'initialize',
+    params: {
+      protocolVersion: '2024-11-05',
+      clientInfo: { name: 'ai-hub', version: '1.0.0' },
+      capabilities: {}
+    }
+  });
+
+  // Fetch tools
+  const toolsResult = await sendToLocalMCP(mcp.name, {
+    jsonrpc: '2.0',
+    id: 'tools',
+    method: 'tools/list',
+    params: {}
+  });
+
+  mcpState.tools = toolsResult.tools || [];
+  mcpState.ready = true;
+
+  logger.info(`Local MCP ${mcp.name} ready`, { toolCount: mcpState.tools.length });
+}
+
+async function sendToLocalMCP(mcpName: string, message: any): Promise<any> {
+  const mcpState = localMCPProcesses.get(mcpName);
+  if (!mcpState) {
+    throw new Error(`Local MCP ${mcpName} is not running`);
+  }
+
+  return new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      mcpState.pendingCalls.delete(message.id);
+      reject(new Error(`Local MCP ${mcpName} call timed out`));
+    }, LIMITS.TOOL_CALL_TIMEOUT_MS);
+
+    mcpState.pendingCalls.set(message.id, {
+      resolve: (val) => {
+        clearTimeout(timeout);
+        resolve(val);
+      },
+      reject: (err) => {
+        clearTimeout(timeout);
+        reject(err);
+      }
+    });
+
+    mcpState.process.stdin?.write(JSON.stringify(message) + '\n');
+  });
+}
+
+async function routeToLocalMCP(
+  mcp: MCPConfig,
+  toolName: string,
+  args: any
+): Promise<any> {
+  // Ensure MCP is started
+  if (!localMCPProcesses.has(mcp.name)) {
+    await startLocalMCP(mcp);
+  }
+
+  const mcpState = localMCPProcesses.get(mcp.name);
+  if (!mcpState?.ready) {
+    throw new Error(`Local MCP ${mcp.name} is not ready`);
+  }
+
+  const fullToolName = `${mcp.name}__${toolName}`;
+  logger.debug(`Routing to local MCP`, { mcp: mcp.name, tool: toolName, args });
+
+  const result = await sendToLocalMCP(mcp.name, {
+    jsonrpc: '2.0',
+    id: `call-${Date.now()}`,
+    method: 'tools/call',
+    params: {
+      name: toolName,
+      arguments: args
+    }
+  });
+
+  return result;
+}
+
+function getLocalMCPTools(mcpName: string): MCPTool[] {
+  const mcpState = localMCPProcesses.get(mcpName);
+  if (!mcpState?.ready) return [];
+
+  // Namespace tools with MCP name
+  return mcpState.tools.map(tool => ({
+    ...tool,
+    name: `${mcpName}__${tool.name}`,
+    description: `[${mcpName}] ${tool.description}`
+  }));
+}
+
+// Initialize local MCPs on startup
+export async function initializeLocalMCPs(config: AIHubConfig): Promise<void> {
+  for (const mcp of config.mcps.local.filter(m => m.enabled)) {
+    try {
+      await startLocalMCP(mcp);
+    } catch (error: any) {
+      logger.error(`Failed to start local MCP ${mcp.name}`, { error: error.message });
+    }
   }
 }
 
@@ -525,7 +722,7 @@ export function createMCPGateway(app: Express, basePath: string): void {
 
         case 'tools/list': {
           const hubTools = getHubTools();
-          
+
           // Get external MCP tools (with circuit breaker awareness)
           const externalTools: MCPTool[] = [];
           for (const mcp of config.mcps.external.filter(m => m.enabled)) {
@@ -539,38 +736,53 @@ export function createMCPGateway(app: Express, basePath: string): void {
               });
               continue;
             }
-            
+
             // TODO: Fetch actual tools from external MCP
+          }
+
+          // Get local MCP tools
+          const localTools: MCPTool[] = [];
+          for (const mcp of config.mcps.local.filter(m => m.enabled)) {
+            const tools = getLocalMCPTools(mcp.name);
+            localTools.push(...tools);
           }
 
           response = {
             jsonrpc: '2.0',
             id: message.id,
-            result: { tools: [...hubTools, ...externalTools] }
+            result: { tools: [...hubTools, ...localTools, ...externalTools] }
           };
           break;
         }
 
         case 'tools/call': {
           const { name, arguments: args } = message.params;
-          
+
           try {
             let result: any;
-            
+
             if (name.startsWith('aih__')) {
               // Hub tool
               result = await executeHubTool(config, name, args || {});
             } else if (name.includes('__')) {
-              // External MCP tool
+              // Namespaced tool - check local MCPs first, then external
               const [mcpName, toolName] = name.split('__', 2);
-              const mcp = config.mcps.external.find(m => m.name === mcpName && m.enabled);
-              
-              if (!mcp) {
-                throw new Error(`MCP '${mcpName}' not found or disabled`);
+
+              // Check local MCPs first
+              const localMcp = config.mcps.local.find(m => m.name === mcpName && m.enabled);
+              if (localMcp) {
+                result = await routeToLocalMCP(localMcp, toolName, args || {});
+              } else {
+                // Check external MCPs
+                const externalMcp = config.mcps.external.find(m => m.name === mcpName && m.enabled);
+
+                if (!externalMcp) {
+                  throw new Error(`MCP '${mcpName}' not found or disabled`);
+                }
+
+                result = await routeToExternalMCP(externalMcp, toolName, args || {});
+                recordSuccess(mcpName);
               }
-              
-              result = await routeToExternalMCP(mcp, toolName, args || {});
-              recordSuccess(mcpName);
             } else {
               throw new Error(`Unknown tool: ${name}. Tools must be namespaced as 'mcp__tool'`);
             }
