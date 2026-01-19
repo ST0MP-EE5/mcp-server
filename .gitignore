@@ -22,7 +22,7 @@ pids/
 *.pid
 *.seed
 *.pid.lock
-aih.pid
+mcp-server.pid
 
 # IDE
 .idea/

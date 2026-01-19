@@ -1,11 +1,11 @@
 {
-  "name": "ai-hub",
+  "name": "mcp-server-template",
   "version": "1.0.0",
-  "description": "Portable AI Infrastructure Hub - MCPs, Skills, Configs in one place",
+  "description": "Self-hosted MCP Server Template - Deploy your own Model Context Protocol server with tools, skills, and AI dev integrations",
   "type": "module",
   "main": "dist/index.js",
   "bin": {
-    "aih": "./dist/cli.js"
+    "mcp-server": "./dist/cli.js"
   },
   "scripts": {
     "dev": "tsx watch src/index.ts",

@@ -33,7 +33,7 @@ RUN npm ci --only=production && npm cache clean --force
 COPY --from=builder /app/dist ./dist
 
 # Copy config and resource directories
-COPY aih-config.yaml ./
+COPY mcp-server.yaml ./
 COPY skills/ ./skills/
 COPY configs/ ./configs/
 COPY plugins/ ./plugins/

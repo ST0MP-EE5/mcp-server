@@ -1,9 +1,9 @@
 version: '3.8'
 
 services:
-  ai-hub:
+  mcp-server:
     build: .
-    container_name: ai-hub
+    container_name: mcp-server
     ports:
       - "3000:3000"
     environment:
@@ -11,6 +11,7 @@ services:
       - PORT=3000
       - LOG_LEVEL=info
       # MCP tokens (set in .env file)
+      - DO_API_TOKEN=${DO_API_TOKEN}
       - STRIPE_MCP_TOKEN=${STRIPE_MCP_TOKEN}
       - VERCEL_TOKEN=${VERCEL_TOKEN}
       - GITHUB_TOKEN=${GITHUB_TOKEN}
@@ -18,7 +19,7 @@ services:
       # Persist logs
       - ./logs:/app/logs
       # Mount config for hot-reload (optional)
-      - ./aih-config.yaml:/app/aih-config.yaml:ro
+      - ./mcp-server.yaml:/app/mcp-server.yaml:ro
       # Mount resources (read-only)
       - ./skills:/app/skills:ro
       - ./configs:/app/configs:ro
@@ -35,7 +36,7 @@ services:
   # Optional: Redis for caching and session management
   redis:
     image: redis:7-alpine
-    container_name: ai-hub-redis
+    container_name: mcp-server-redis
     ports:
       - "6379:6379"
     volumes:
@@ -47,7 +48,7 @@ services:
   # Optional: Nginx reverse proxy with SSL
   nginx:
     image: nginx:alpine
-    container_name: ai-hub-nginx
+    container_name: mcp-server-nginx
     ports:
       - "80:80"
       - "443:443"
@@ -55,7 +56,7 @@ services:
       - ./nginx.conf:/etc/nginx/nginx.conf:ro
       - ./certs:/etc/nginx/certs:ro
     depends_on:
-      - ai-hub
+      - mcp-server
     restart: unless-stopped
     profiles:
       - with-nginx
@@ -65,4 +66,4 @@ volumes:
 
 networks:
   default:
-    name: ai-hub-network
+    name: mcp-server-network

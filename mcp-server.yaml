@@ -1,5 +1,5 @@
 version: "1.0"
-name: "my-ai-hub"  # Rename this to your hub name
+name: "my-mcp-server"  # Rename this to your server name
 
 # Authentication
 auth:

@@ -20,10 +20,10 @@ async function main() {
   const server = createServer(app);
 
   // Load configuration
-  const config = await loadConfig('./aih-config.yaml');
-  
+  const config = await loadConfig('./mcp-server.yaml');
+
   // Watch for config changes (hot reload)
-  watchConfig('./aih-config.yaml', (newConfig) => {
+  watchConfig('./mcp-server.yaml', (newConfig) => {
     logger.info('Configuration reloaded');
     app.locals.config = newConfig;
   });

@@ -1,15 +1,19 @@
-name: ai-hub
-region: nyc
+# DigitalOcean App Platform Spec
+# Update the values below before deploying
+
+name: mcp-server  # Change to your app name
+region: nyc       # nyc, sfo, ams, sgp, etc.
+
 services:
   - name: api
     github:
-      repo: ST0MP-EE5/ai-hub
+      repo: YOUR_USERNAME/mcp-server  # Change to your repo
       branch: main
       deploy_on_push: true
     build_command: npm ci --include=dev && npm run build
     run_command: npm start
     environment_slug: node-js
-    instance_size_slug: apps-s-1vcpu-0.5gb
+    instance_size_slug: apps-s-1vcpu-0.5gb  # ~$5/month
     instance_count: 1
     http_port: 3000
     routes:
@@ -20,3 +24,7 @@ services:
       - key: DO_API_TOKEN
         scope: RUN_TIME
         type: SECRET
+      # Add more environment variables as needed:
+      # - key: STRIPE_MCP_TOKEN
+      #   scope: RUN_TIME
+      #   type: SECRET

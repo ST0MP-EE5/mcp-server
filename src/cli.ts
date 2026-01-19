@@ -1,16 +1,16 @@
 #!/usr/bin/env node
 
 /**
- * AI Hub CLI - Machine-readable interface
- * 
+ * MCP Server CLI - Machine-readable interface
+ *
  * All commands output JSON to stdout.
  * Errors go to stderr with exit code 1.
- * 
+ *
  * Usage:
- *   aih <command> [args] [--flags]
- *   
+ *   mcp-server <command> [args] [--flags]
+ *
  * Commands:
- *   init              Initialize new hub
+ *   init              Initialize new server
  *   status            System health and stats
  *   key generate      Generate API key
  *   key list          List API keys (hashes only)
@@ -55,13 +55,13 @@ const error = (message, code = 'ERROR', details = null) => {
 };
 
 // Config helpers
-const CONFIG_PATH = process.env.AIH_CONFIG || './aih-config.yaml';
-const ENV_PATH = process.env.AIH_ENV || './.env';
+const CONFIG_PATH = process.env.MCP_SERVER_CONFIG || './mcp-server.yaml';
+const ENV_PATH = process.env.MCP_SERVER_ENV || './.env';
 
 function loadConfig() {
   try {
     if (!fs.existsSync(CONFIG_PATH)) {
-      error('Config not found. Run: aih init', 'CONFIG_NOT_FOUND');
+      error('Config not found. Run: mcp-server init', 'CONFIG_NOT_FOUND');
     }
     const content = fs.readFileSync(CONFIG_PATH, 'utf-8');
     return yaml.parse(content);
@@ -108,7 +108,7 @@ function generateKey() {
 // Commands
 const commands = {
   init: async (args) => {
-    const name = args[0] || 'ai-hub';
+    const name = args[0] || 'my-mcp-server';
     
     // Generate initial keys
     const mainKey = generateKey();
@@ -152,8 +152,8 @@ const commands = {
       },
       next_steps: [
         'Add MCP tokens to .env',
-        'Run: aih mcp add <name> <url>',
-        'Run: aih server start'
+        'Run: mcp-server mcp add <name> <url>',
+        'Run: mcp-server server start'
       ]
     });
   },
@@ -165,7 +165,7 @@ const commands = {
     // Check server status
     let serverStatus = 'stopped';
     let serverPid = null;
-    const pidFile = './aih.pid';
+    const pidFile = './mcp-server.pid';
     
     if (fs.existsSync(pidFile)) {
       serverPid = parseInt(fs.readFileSync(pidFile, 'utf-8').trim());
@@ -299,7 +299,7 @@ const commands = {
     
     add: async (args, flags) => {
       const [name, url] = args;
-      if (!name || !url) error('Usage: aih mcp add <name> <url>', 'MISSING_ARG');
+      if (!name || !url) error('Usage: mcp-server mcp add <name> <url>', 'MISSING_ARG');
       
       const config = loadConfig();
       
@@ -443,7 +443,7 @@ const commands = {
     
     add: async (args, flags) => {
       const [name, description] = args;
-      if (!name) error('Usage: aih skill add <name> [description]', 'MISSING_ARG');
+      if (!name) error('Usage: mcp-server skill add <name> [description]', 'MISSING_ARG');
       
       const config = loadConfig();
       
@@ -503,7 +503,7 @@ const commands = {
     
     update: async (args) => {
       const [name, content] = args;
-      if (!name || !content) error('Usage: aih skill update <name> <content>', 'MISSING_ARG');
+      if (!name || !content) error('Usage: mcp-server skill update <name> <content>', 'MISSING_ARG');
       
       const config = loadConfig();
       const skill = config.skills.find(s => s.name === name);
@@ -573,7 +573,7 @@ const commands = {
     
     set: async (args) => {
       const [name, content] = args;
-      if (!name || content === undefined) error('Usage: aih config set <name> <content>', 'MISSING_ARG');
+      if (!name || content === undefined) error('Usage: mcp-server config set <name> <content>', 'MISSING_ARG');
       
       const config = loadConfig();
       
@@ -699,7 +699,7 @@ const commands = {
       }
       
       const spec = {
-        name: config.name || 'ai-hub',
+        name: config.name || 'mcp-server',
         region,
         services: [{
           name: 'api',
@@ -776,14 +776,14 @@ const commands = {
     'droplet-script': async (args, flags) => {
       const config = loadConfig();
       const port = flags.port || 3000;
-      const user = flags.user || 'aih';
-      const installDir = flags.dir || '/opt/ai-hub';
+      const user = flags.user || 'mcp';
+      const installDir = flags.dir || '/opt/mcp-server';
       const repo = flags.repo;
-      
+
       if (!repo) error('--repo=https://github.com/owner/name.git required', 'MISSING_ARG');
-      
+
       const script = `#!/bin/bash
-# AI Hub Droplet Setup Script
+# MCP Server Droplet Setup Script
 # Generated: ${new Date().toISOString()}
 # Run as root: curl -fsSL <url> | bash
 
@@ -829,9 +829,9 @@ chown -R ${user}:${user} ${installDir}
 echo '{"event":"app_installed","dir":"${installDir}"}'
 
 # Create systemd service
-cat > /etc/systemd/system/ai-hub.service << 'SERVICEEOF'
+cat > /etc/systemd/system/mcp-server.service << 'SERVICEEOF'
 [Unit]
-Description=AI Infrastructure Hub
+Description=MCP Server
 After=network.target
 
 [Service]
@@ -857,10 +857,10 @@ SERVICEEOF
 
 # Enable and start
 systemctl daemon-reload
-systemctl enable ai-hub
-systemctl start ai-hub
+systemctl enable mcp-server
+systemctl start mcp-server
 
-echo '{"event":"service_started","status":"'$(systemctl is-active ai-hub)'"}'
+echo '{"event":"service_started","status":"'$(systemctl is-active mcp-server)'"}'
 
 # Setup firewall
 if command -v ufw &> /dev/null; then
@@ -942,7 +942,7 @@ echo '{"event":"setup_complete","url":"http://'$(curl -s ifconfig.me)':${port}'"
       const specPath = flags.spec || '.do/app.yaml';
       
       if (!fs.existsSync(specPath)) {
-        error(`Spec not found: ${specPath}. Run: aih deploy app-spec --repo=...`, 'FILE_NOT_FOUND');
+        error(`Spec not found: ${specPath}. Run: mcp-server deploy app-spec --repo=...`, 'FILE_NOT_FOUND');
       }
       
       try {
@@ -1042,7 +1042,7 @@ echo '{"event":"setup_complete","url":"http://'$(curl -s ifconfig.me)':${port}'"
           stdio: ['ignore', out, err]
         });
         
-        fs.writeFileSync('./aih.pid', String(child.pid));
+        fs.writeFileSync('./mcp-server.pid', String(child.pid));
         child.unref();
         
         output({
@@ -1067,7 +1067,7 @@ echo '{"event":"setup_complete","url":"http://'$(curl -s ifconfig.me)':${port}'"
     },
     
     stop: async () => {
-      const pidFile = './aih.pid';
+      const pidFile = './mcp-server.pid';
       
       if (!fs.existsSync(pidFile)) {
         error('Server not running (no PID file)', 'NOT_RUNNING');
