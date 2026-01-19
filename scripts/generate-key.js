@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * AI Hub Key Generator
+ * MCP-Server Key Generator
  * 
  * Usage:
  *   node scripts/generate-key.js [name]
@@ -20,12 +20,12 @@ const apiKey = crypto.randomBytes(32).toString('hex');
 // Hash the key for storage
 const keyHash = `sha256:${crypto.createHash('sha256').update(apiKey).digest('hex')}`;
 
-console.log('\n🔑 AI Hub API Key Generated\n');
+console.log('\n🔑 MCP-Server API Key Generated\n');
 console.log('Name:', name);
 console.log('─'.repeat(50));
 console.log('\n📋 API Key (save this securely - shown only once):\n');
 console.log(`   ${apiKey}`);
-console.log('\n📝 Add this to your aih-config.yaml:\n');
+console.log('\n📝 Add this to your mcp-config.yaml:\n');
 console.log(`   - name: "${name}"`);
 console.log(`     key_hash: "${keyHash}"`);
 console.log(`     permissions: ["*"]  # Adjust as needed`);

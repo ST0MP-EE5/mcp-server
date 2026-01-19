@@ -68,7 +68,7 @@ async function main() {
       });
 
       const server = new Server(
-        { name: 'ai-hub', version: '1.0.0' },
+        { name: 'mcp-server', version: '1.0.0' },
         { capabilities: { tools: {} } }
       );
 
@@ -76,12 +76,12 @@ async function main() {
       server.setRequestHandler(ListToolsRequestSchema, async () => ({
         tools: [
           {
-            name: 'aih__health',
-            description: 'Check the health status of the AI Hub',
+            name: 'mcp__health',
+            description: 'Check the health status of the MCP Server',
             inputSchema: { type: 'object', properties: {}, required: [] }
           },
           {
-            name: 'aih__list_skills',
+            name: 'mcp__list_skills',
             description: 'List all available skills',
             inputSchema: {
               type: 'object',
@@ -95,7 +95,7 @@ async function main() {
       server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const { name, arguments: args } = request.params;
 
-        if (name === 'aih__health') {
+        if (name === 'mcp__health') {
           return {
             content: [{
               type: 'text',
@@ -108,7 +108,7 @@ async function main() {
           };
         }
 
-        if (name === 'aih__list_skills') {
+        if (name === 'mcp__list_skills') {
           let skills = config.skills;
           if (args?.tag) {
             skills = skills.filter(s => s.tags.includes(args.tag as string));
@@ -151,7 +151,7 @@ async function main() {
 
   // Start server
   app.listen(PORT, () => {
-    logger.info(`AI Hub (Streamable HTTP) started on port ${PORT}`);
+    logger.info(`MCP Server (Streamable HTTP) started on port ${PORT}`);
   });
 }
 

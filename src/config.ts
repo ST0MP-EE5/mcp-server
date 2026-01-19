@@ -55,7 +55,7 @@ export interface AuthConfig {
   };
 }
 
-export interface AIHubConfig {
+export interface MCPServerConfig {
   version: string;
   name: string;
   auth: AuthConfig;
@@ -87,10 +87,10 @@ function resolveEnvVars(obj: any): any {
   return obj;
 }
 
-export async function loadConfig(path: string): Promise<AIHubConfig> {
+export async function loadConfig(path: string): Promise<MCPServerConfig> {
   try {
     const content = await readFile(path, 'utf-8');
-    const config = parse(content) as AIHubConfig;
+    const config = parse(content) as MCPServerConfig;
     return resolveEnvVars(config);
   } catch (error) {
     logger.error(`Failed to load config from ${path}:`, error);
@@ -98,7 +98,7 @@ export async function loadConfig(path: string): Promise<AIHubConfig> {
   }
 }
 
-export function watchConfig(path: string, onChange: (config: AIHubConfig) => void): void {
+export function watchConfig(path: string, onChange: (config: MCPServerConfig) => void): void {
   const watcher = chokidar.watch(path, {
     persistent: true,
     ignoreInitial: true
@@ -117,7 +117,7 @@ export function watchConfig(path: string, onChange: (config: AIHubConfig) => voi
 // Skill content cache
 const skillCache = new Map<string, { content: string; mtime: number }>();
 
-export async function loadSkillContent(config: AIHubConfig, skillName: string): Promise<string | null> {
+export async function loadSkillContent(config: MCPServerConfig, skillName: string): Promise<string | null> {
   const skill = config.skills.find(s => s.name === skillName);
   if (!skill) return null;
 
@@ -130,7 +130,7 @@ export async function loadSkillContent(config: AIHubConfig, skillName: string): 
   }
 }
 
-export async function loadConfigContent(config: AIHubConfig, configName: string): Promise<string | null> {
+export async function loadConfigContent(config: MCPServerConfig, configName: string): Promise<string | null> {
   const configDef = config.configs[configName];
   if (!configDef) return null;
 

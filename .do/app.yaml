@@ -28,6 +28,12 @@ services:
       - key: DO_API_TOKEN
         scope: RUN_AND_BUILD_TIME
         type: SECRET
+      - key: GITHUB_PERSONAL_ACCESS_TOKEN
+        scope: RUN_AND_BUILD_TIME
+        type: SECRET
+      - key: GREPTILE_API_KEY
+        scope: RUN_AND_BUILD_TIME
+        type: SECRET
 
 alerts:
   - rule: DEPLOYMENT_FAILED

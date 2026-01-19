@@ -1,6 +1,6 @@
 import { Express, Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
-import { AIHubConfig, loadSkillContent, loadConfigContent, MCPConfig } from './config.js';
+import { MCPServerConfig, loadSkillContent, loadConfigContent, MCPConfig } from './config.js';
 import { verifyApiKey } from './middleware/auth.js';
 import { logger } from './utils/logger.js';
 
@@ -180,12 +180,12 @@ setInterval(cleanupStaleConnections, 60000);
 function getHubTools(): MCPTool[] {
   return [
     {
-      name: 'aih__list_mcps',
-      description: 'List all available MCPs in the AI Hub',
+      name: 'mcp__list_mcps',
+      description: 'List all available MCPs in the MCP Server',
       inputSchema: { type: 'object', properties: {}, required: [] }
     },
     {
-      name: 'aih__list_skills',
+      name: 'mcp__list_skills',
       description: 'List all available skills',
       inputSchema: {
         type: 'object',
@@ -194,7 +194,7 @@ function getHubTools(): MCPTool[] {
       }
     },
     {
-      name: 'aih__get_skill',
+      name: 'mcp__get_skill',
       description: 'Get the content of a specific skill',
       inputSchema: {
         type: 'object',
@@ -203,12 +203,12 @@ function getHubTools(): MCPTool[] {
       }
     },
     {
-      name: 'aih__list_configs',
+      name: 'mcp__list_configs',
       description: 'List all available configuration files',
       inputSchema: { type: 'object', properties: {}, required: [] }
     },
     {
-      name: 'aih__get_config',
+      name: 'mcp__get_config',
       description: 'Get the content of a specific configuration file',
       inputSchema: {
         type: 'object',
@@ -217,12 +217,12 @@ function getHubTools(): MCPTool[] {
       }
     },
     {
-      name: 'aih__health',
-      description: 'Check the health status of the AI Hub and all MCPs',
+      name: 'mcp__health',
+      description: 'Check the health status of the MCP Server and all MCPs',
       inputSchema: { type: 'object', properties: {}, required: [] }
     },
     {
-      name: 'aih__mcp_status',
+      name: 'mcp__mcp_status',
       description: 'Get detailed status of a specific MCP',
       inputSchema: {
         type: 'object',
@@ -233,9 +233,9 @@ function getHubTools(): MCPTool[] {
   ];
 }
 
-async function executeHubTool(config: AIHubConfig, toolName: string, args: any): Promise<any> {
+async function executeHubTool(config: MCPServerConfig, toolName: string, args: any): Promise<any> {
   switch (toolName) {
-    case 'aih__list_mcps': {
+    case 'mcp__list_mcps': {
       const mcps = [
         ...config.mcps.external.filter(m => m.enabled).map(m => {
           const breaker = getCircuitBreaker(m.name);
@@ -256,7 +256,7 @@ async function executeHubTool(config: AIHubConfig, toolName: string, args: any):
       return { mcps };
     }
 
-    case 'aih__list_skills': {
+    case 'mcp__list_skills': {
       let skills = config.skills;
       if (args.tag) {
         skills = skills.filter(s => s.tags.includes(args.tag));
@@ -264,13 +264,13 @@ async function executeHubTool(config: AIHubConfig, toolName: string, args: any):
       return { skills: skills.map(s => ({ name: s.name, description: s.description, tags: s.tags })) };
     }
 
-    case 'aih__get_skill': {
+    case 'mcp__get_skill': {
       const content = await loadSkillContent(config, args.name);
       if (!content) throw new Error(`Skill '${args.name}' not found`);
       return { name: args.name, content };
     }
 
-    case 'aih__list_configs': {
+    case 'mcp__list_configs': {
       return {
         configs: Object.entries(config.configs).map(([key, value]) => ({
           name: key,
@@ -279,13 +279,13 @@ async function executeHubTool(config: AIHubConfig, toolName: string, args: any):
       };
     }
 
-    case 'aih__get_config': {
+    case 'mcp__get_config': {
       const content = await loadConfigContent(config, args.name);
       if (!content) throw new Error(`Config '${args.name}' not found`);
       return { name: args.name, content };
     }
 
-    case 'aih__health': {
+    case 'mcp__health': {
       const mcpStatuses: Record<string, any> = {};
       for (const mcp of config.mcps.external.filter(m => m.enabled)) {
         const breaker = getCircuitBreaker(mcp.name);
@@ -313,7 +313,7 @@ async function executeHubTool(config: AIHubConfig, toolName: string, args: any):
       };
     }
 
-    case 'aih__mcp_status': {
+    case 'mcp__mcp_status': {
       const mcp = config.mcps.external.find(m => m.name === args.name);
       if (!mcp) throw new Error(`MCP '${args.name}' not found`);
       
@@ -476,7 +476,7 @@ async function startLocalMCP(mcp: MCPConfig): Promise<void> {
     method: 'initialize',
     params: {
       protocolVersion: '2024-11-05',
-      clientInfo: { name: 'ai-hub', version: '1.0.0' },
+      clientInfo: { name: 'mcp-server', version: '1.0.0' },
       capabilities: {}
     }
   });
@@ -566,7 +566,7 @@ function getLocalMCPTools(mcpName: string): MCPTool[] {
 }
 
 // Initialize local MCPs on startup
-export async function initializeLocalMCPs(config: AIHubConfig): Promise<void> {
+export async function initializeLocalMCPs(config: MCPServerConfig): Promise<void> {
   for (const mcp of config.mcps.local.filter(m => m.enabled)) {
     try {
       await startLocalMCP(mcp);
@@ -597,7 +597,7 @@ export function createMCPGateway(app: Express, basePath: string): void {
     }
 
     const apiKey = authHeader.substring(7);
-    const config = req.app.locals.config as AIHubConfig;
+    const config = req.app.locals.config as MCPServerConfig;
     const matchedKey = config.auth.api_keys.find(k => verifyApiKey(apiKey, k.key_hash));
     
     if (!matchedKey) {
@@ -710,7 +710,7 @@ export function createMCPGateway(app: Express, basePath: string): void {
     // Update activity
     client.lastActivity = Date.now();
     
-    const config = req.app.locals.config as AIHubConfig;
+    const config = req.app.locals.config as MCPServerConfig;
     const message: MCPMessage = req.body;
     
     logger.debug('MCP message', { method: message.method, id: message.id, clientId });
@@ -725,7 +725,7 @@ export function createMCPGateway(app: Express, basePath: string): void {
             id: message.id,
             result: {
               protocolVersion: '2024-11-05',
-              serverInfo: { name: 'ai-hub', version: '1.0.0' },
+              serverInfo: { name: 'mcp-server', version: '1.0.0' },
               capabilities: { tools: {} }
             }
           };
@@ -773,7 +773,7 @@ export function createMCPGateway(app: Express, basePath: string): void {
           try {
             let result: any;
 
-            if (name.startsWith('aih__')) {
+            if (name.startsWith('mcp__')) {
               // Hub tool
               result = await executeHubTool(config, name, args || {});
             } else if (name.includes('__')) {
@@ -859,7 +859,7 @@ export function createMCPGateway(app: Express, basePath: string): void {
   // -------------------------------------------------------------------------
   
   app.get(`${basePath}/health`, (req: Request, res: Response) => {
-    const config = req.app.locals.config as AIHubConfig;
+    const config = req.app.locals.config as MCPServerConfig;
     
     const mcpStatuses: Record<string, string> = {};
     for (const mcp of config.mcps.external) {
@@ -891,35 +891,35 @@ export function createMCPGateway(app: Express, basePath: string): void {
   // -------------------------------------------------------------------------
   
   app.get(`${basePath}/metrics`, (req: Request, res: Response) => {
-    const config = req.app.locals.config as AIHubConfig;
+    const config = req.app.locals.config as MCPServerConfig;
     const mem = process.memoryUsage();
     
     let metrics = '';
     
     // Uptime
-    metrics += `# HELP aih_uptime_seconds Server uptime in seconds\n`;
-    metrics += `# TYPE aih_uptime_seconds gauge\n`;
-    metrics += `aih_uptime_seconds ${Math.floor(process.uptime())}\n\n`;
+    metrics += `# HELP mcp_uptime_seconds Server uptime in seconds\n`;
+    metrics += `# TYPE mcp_uptime_seconds gauge\n`;
+    metrics += `mcp_uptime_seconds ${Math.floor(process.uptime())}\n\n`;
     
     // Connections
-    metrics += `# HELP aih_connections_active Active SSE connections\n`;
-    metrics += `# TYPE aih_connections_active gauge\n`;
-    metrics += `aih_connections_active ${clients.size}\n\n`;
+    metrics += `# HELP mcp_connections_active Active SSE connections\n`;
+    metrics += `# TYPE mcp_connections_active gauge\n`;
+    metrics += `mcp_connections_active ${clients.size}\n\n`;
     
     // Memory
-    metrics += `# HELP aih_memory_bytes Memory usage in bytes\n`;
-    metrics += `# TYPE aih_memory_bytes gauge\n`;
-    metrics += `aih_memory_bytes{type="heap_used"} ${mem.heapUsed}\n`;
-    metrics += `aih_memory_bytes{type="heap_total"} ${mem.heapTotal}\n`;
-    metrics += `aih_memory_bytes{type="rss"} ${mem.rss}\n\n`;
+    metrics += `# HELP mcp_memory_bytes Memory usage in bytes\n`;
+    metrics += `# TYPE mcp_memory_bytes gauge\n`;
+    metrics += `mcp_memory_bytes{type="heap_used"} ${mem.heapUsed}\n`;
+    metrics += `mcp_memory_bytes{type="heap_total"} ${mem.heapTotal}\n`;
+    metrics += `mcp_memory_bytes{type="rss"} ${mem.rss}\n\n`;
     
     // MCP status
-    metrics += `# HELP aih_mcp_status MCP health status (1=healthy, 0=degraded)\n`;
-    metrics += `# TYPE aih_mcp_status gauge\n`;
+    metrics += `# HELP mcp_mcp_status MCP health status (1=healthy, 0=degraded)\n`;
+    metrics += `# TYPE mcp_mcp_status gauge\n`;
     for (const mcp of config.mcps.external) {
       const breaker = getCircuitBreaker(mcp.name);
       const healthy = mcp.enabled && breaker.state !== 'open' ? 1 : 0;
-      metrics += `aih_mcp_status{name="${mcp.name}"} ${healthy}\n`;
+      metrics += `mcp_mcp_status{name="${mcp.name}"} ${healthy}\n`;
     }
     
     res.type('text/plain').send(metrics);

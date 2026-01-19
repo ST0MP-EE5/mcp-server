@@ -10,7 +10,7 @@ All commands output JSON to stdout. Exit code 0 = success, 1 = error.
 
 ```bash
 # All commands follow this pattern:
-aih <command> [subcommand] [args] [--flags]
+mcp <command> [subcommand] [args] [--flags]
 
 # Output is always JSON:
 # { "ok": true, ... } or { "ok": false, "error": { "code": "...", "message": "..." } }
@@ -20,66 +20,66 @@ aih <command> [subcommand] [args] [--flags]
 
 | Command | Description | Example |
 |---------|-------------|---------|
-| `aih init [name]` | Initialize hub | `aih init my-hub` |
-| `aih status` | Full system status | `aih status \| jq .server.status` |
-| `aih backup` | Export all state | `aih backup` |
-| `aih restore <path>` | Restore from backup | `aih restore ./backups/backup-123.json` |
+| `mcp init [name]` | Initialize hub | `mcp init my-hub` |
+| `mcp status` | Full system status | `mcp status \| jq .server.status` |
+| `mcp backup` | Export all state | `mcp backup` |
+| `mcp restore <path>` | Restore from backup | `mcp restore ./backups/backup-123.json` |
 
 ### Key Management
 
 | Command | Description |
 |---------|-------------|
-| `aih key generate <n> [perms]` | Generate API key |
-| `aih key list` | List keys (hashes only) |
-| `aih key revoke <n>` | Revoke key |
+| `mcp key generate <n> [perms]` | Generate API key |
+| `mcp key list` | List keys (hashes only) |
+| `mcp key revoke <n>` | Revoke key |
 
 ### MCP Management
 
 | Command | Description |
 |---------|-------------|
-| `aih mcp list` | List all MCPs |
-| `aih mcp add <n> <url> [--token=X]` | Add external MCP |
-| `aih mcp test <n>` | Test connectivity |
-| `aih mcp enable <n>` | Enable MCP |
-| `aih mcp disable <n>` | Disable MCP |
-| `aih mcp remove <n>` | Remove MCP |
+| `mcp remote list` | List all MCPs |
+| `mcp remote add <n> <url> [--token=X]` | Add external MCP |
+| `mcp remote test <n>` | Test connectivity |
+| `mcp remote enable <n>` | Enable MCP |
+| `mcp remote disable <n>` | Disable MCP |
+| `mcp remote remove <n>` | Remove MCP |
 
 ### Skill Management
 
 | Command | Description |
 |---------|-------------|
-| `aih skill list` | List skills |
-| `aih skill add <n> [desc] [--tags=X]` | Add skill |
-| `aih skill get <n>` | Get skill content |
-| `aih skill update <n> <content>` | Update skill |
-| `aih skill remove <n>` | Remove skill |
+| `mcp skill list` | List skills |
+| `mcp skill add <n> [desc] [--tags=X]` | Add skill |
+| `mcp skill get <n>` | Get skill content |
+| `mcp skill update <n> <content>` | Update skill |
+| `mcp skill remove <n>` | Remove skill |
 
 ### Config Management
 
 | Command | Description |
 |---------|-------------|
-| `aih config list` | List configs |
-| `aih config get <n>` | Get config content |
-| `aih config set <n> <content>` | Set config |
+| `mcp config list` | List configs |
+| `mcp config get <n>` | Get config content |
+| `mcp config set <n> <content>` | Set config |
 
 ### Server Management
 
 | Command | Description |
 |---------|-------------|
-| `aih server start [--daemon]` | Start server |
-| `aih server stop` | Stop daemon |
-| `aih server logs [--lines=N]` | View logs (JSON lines) |
+| `mcp server start [--daemon]` | Start server |
+| `mcp server stop` | Stop daemon |
+| `mcp server logs [--lines=N]` | View logs (JSON lines) |
 
 ### Deployment (DigitalOcean)
 
 | Command | Description |
 |---------|-------------|
-| `aih deploy doctl-check` | Check if doctl is installed/authenticated |
-| `aih deploy app-spec --repo=X` | Generate App Platform spec (.do/app.yaml) |
-| `aih deploy app-create` | Create app via doctl |
-| `aih deploy app-list` | List your DO apps |
-| `aih deploy app-status <id>` | Get app deployment status |
-| `aih deploy droplet-script --repo=X` | Generate droplet setup script |
+| `mcp deploy doctl-check` | Check if doctl is installed/authenticated |
+| `mcp deploy app-spec --repo=X` | Generate App Platform spec (.do/app.yaml) |
+| `mcp deploy app-create` | Create app via doctl |
+| `mcp deploy app-list` | List your DO apps |
+| `mcp deploy app-status <id>` | Get app deployment status |
+| `mcp deploy droplet-script --repo=X` | Generate droplet setup script |
 
 ## Natural Language Mappings
 
@@ -87,22 +87,22 @@ When user says → Execute command:
 
 | User Says | Command |
 |-----------|---------|
-| "initialize" / "set up" / "create hub" | `aih init` |
-| "what's the status" / "health check" | `aih status` |
-| "add stripe mcp" | `aih mcp add stripe https://mcp.stripe.com --token=ASK` |
-| "add a debugging skill" | `aih skill add debugging "Systematic debugging"` |
-| "generate api key for cursor" | `aih key generate cursor` |
-| "test the github connection" | `aih mcp test github` |
-| "disable notion" | `aih mcp disable notion` |
-| "show me all skills" | `aih skill list` |
-| "what skills do i have for writing" | `aih skill list \| jq '.skills[] \| select(.tags[] == "writing")'` |
-| "start the server" | `aih server start --daemon` |
-| "show recent logs" | `aih server logs --lines=100` |
-| "back everything up" | `aih backup` |
-| "deploy to digitalocean" | `aih deploy app-spec --repo=X` then `aih deploy app-create` |
-| "deploy to droplet" | `aih deploy droplet-script --repo=X` |
-| "check doctl" | `aih deploy doctl-check` |
-| "what's the app status" | `aih deploy app-list` |
+| "initialize" / "set up" / "create hub" | `mcp init` |
+| "what's the status" / "health check" | `mcp status` |
+| "add stripe mcp" | `mcp remote add stripe https://mcp.stripe.com --token=ASK` |
+| "add a debugging skill" | `mcp skill add debugging "Systematic debugging"` |
+| "generate api key for cursor" | `mcp key generate cursor` |
+| "test the github connection" | `mcp remote test github` |
+| "disable notion" | `mcp remote disable notion` |
+| "show me all skills" | `mcp skill list` |
+| "what skills do i have for writing" | `mcp skill list \| jq '.skills[] \| select(.tags[] == "writing")'` |
+| "start the server" | `mcp server start --daemon` |
+| "show recent logs" | `mcp server logs --lines=100` |
+| "back everything up" | `mcp backup` |
+| "deploy to digitalocean" | `mcp deploy app-spec --repo=X` then `mcp deploy app-create` |
+| "deploy to droplet" | `mcp deploy droplet-script --repo=X` |
+| "check doctl" | `mcp deploy doctl-check` |
+| "what's the app status" | `mcp deploy app-list` |
 
 ## Deployment (Self-Hosted)
 
@@ -112,10 +112,10 @@ Full workflow via CLI:
 
 ```bash
 # 1. Check doctl is ready
-aih deploy doctl-check
+mcp deploy doctl-check
 
 # 2. Generate app spec (creates .do/app.yaml)
-aih deploy app-spec --repo=username/ai-hub --region=nyc
+mcp deploy app-spec --repo=username/ai-hub --region=nyc
 
 # 3. Commit and push to GitHub
 git add .do/app.yaml
@@ -123,10 +123,10 @@ git commit -m "Add DO app spec"
 git push
 
 # 4. Create the app
-aih deploy app-create
+mcp deploy app-create
 
 # 5. Monitor deployment
-aih deploy app-status <app-id>
+mcp deploy app-status <app-id>
 ```
 
 Flags for `app-spec`:
@@ -139,7 +139,7 @@ Flags for `app-spec`:
 
 ```bash
 # 1. Generate setup script
-aih deploy droplet-script --repo=https://github.com/you/ai-hub.git
+mcp deploy droplet-script --repo=https://github.com/you/ai-hub.git
 
 # 2. Copy to droplet
 scp scripts/setup-droplet.sh root@<ip>:/tmp/
@@ -152,7 +152,7 @@ ssh root@<ip> 'bash /tmp/setup-droplet.sh'
 Flags for `droplet-script`:
 - `--repo=url` (required) - Git clone URL
 - `--port=3000` (default)
-- `--user=aih` (default) - Linux user to run as
+- `--user=mcp` (default) - Linux user to run as
 - `--dir=/opt/ai-hub` (default) - Install directory
 
 ### Option 3: Systemd Service (Manual)
@@ -166,7 +166,7 @@ After=network.target
 
 [Service]
 Type=simple
-User=aih
+User=mcp
 WorkingDirectory=/opt/ai-hub
 ExecStart=/usr/bin/node dist/index.js
 Restart=always
@@ -188,7 +188,7 @@ docker build -t ai-hub .
 docker run -d \
   --name ai-hub \
   -p 3000:3000 \
-  -v $(pwd)/aih-config.yaml:/app/aih-config.yaml:ro \
+  -v $(pwd)/mcp-config.yaml:/app/mcp-config.yaml:ro \
   -v $(pwd)/skills:/app/skills:ro \
   -v $(pwd)/.env:/app/.env:ro \
   --restart unless-stopped \
@@ -205,7 +205,7 @@ docker-compose up -d
 
 ```
 /opt/ai-hub/              # Or wherever installed
-├── aih-config.yaml       # Main config (YAML)
+├── mcp-config.yaml       # Main config (YAML)
 ├── .env                  # Secrets (KEY=value)
 ├── dist/                 # Compiled JS
 ├── skills/               # Skill markdown files
@@ -216,10 +216,10 @@ docker-compose up -d
 │   ├── combined.log
 │   └── error.log
 ├── backups/              # Backup JSON files
-└── aih.pid               # PID file when daemonized
+└── mcp.pid               # PID file when daemonized
 ```
 
-## Config Format (aih-config.yaml)
+## Config Format (mcp-config.yaml)
 
 ```yaml
 version: "1.0"
@@ -287,7 +287,7 @@ All return JSON.
 curl -s localhost:3000/health | jq .status
 
 # Full status
-aih status | jq .
+mcp status | jq .
 
 # Watch connections
 watch -n5 'curl -s localhost:3000/mcp/health | jq .connections'
@@ -303,20 +303,20 @@ tail -f logs/combined.log | jq .
 
 ```bash
 # Server won't start
-aih status                          # Check if already running
+mcp status                          # Check if already running
 cat logs/error.log | tail -20       # Check errors
-LOG_LEVEL=debug aih server start    # Verbose mode
+LOG_LEVEL=debug mcp server start    # Verbose mode
 
 # MCP not working
-aih mcp test <n>                 # Test connection
-aih status | jq '.mcps.<n>'     # Check circuit breaker
+mcp remote test <n>                 # Test connection
+mcp status | jq '.mcps.<n>'     # Check circuit breaker
 
 # Out of connections
-aih status | jq .connections        # Check limits
+mcp status | jq .connections        # Check limits
 # Clients should reconnect; if stuck, restart
 
 # Config issues
-cat aih-config.yaml | python3 -c "import yaml,sys; yaml.safe_load(sys.stdin)" && echo "valid"
+cat mcp-config.yaml | python3 -c "import yaml,sys; yaml.safe_load(sys.stdin)" && echo "valid"
 ```
 
 ## DigitalOcean MCP Tools

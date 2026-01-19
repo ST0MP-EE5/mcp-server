@@ -1,6 +1,6 @@
 # Edge Cases & Hardening Guide
 
-This document covers all known edge cases and how AIH handles them.
+This document covers all known edge cases and how MCP-Server handles them.
 
 ## Connection & Network
 
@@ -19,7 +19,7 @@ This document covers all known edge cases and how AIH handles them.
 
 **CLI Check**:
 ```bash
-aih mcp test stripe
+mcp remote test stripe
 # Returns: { ok: false, error: "timeout", latency_ms: 10000 }
 ```
 
@@ -65,7 +65,7 @@ CONNECTION_TIMEOUT = 3600000    // 1 hour max connection
 
 **Detection**:
 ```bash
-aih status
+mcpstatus
 # Shows: mcps.stripe.status: "auth_expired"
 ```
 
@@ -80,10 +80,10 @@ aih status
 
 ```bash
 # Add new key
-aih key generate main-v2
+mcpkey generate main-v2
 # Old key still works for 24h
 # Then revoke old key
-aih key revoke main
+mcpkey revoke main
 ```
 
 ### 6. Timing Attacks on Auth
@@ -122,12 +122,12 @@ aih key revoke main
 **Handling**:
 - Strict validation on load
 - Fail fast with clear error message
-- Keep last-known-good config in `.aih-config.backup.yaml`
-- Recovery: `aih restore <backup>`
+- Keep last-known-good config in `.mcp-config.backup.yaml`
+- Recovery: `mcprestore <backup>`
 
 ```bash
 # Validate without starting
-aih config validate
+mcpconfig validate
 # Returns: { ok: true } or { ok: false, errors: [...] }
 ```
 
@@ -251,7 +251,7 @@ MAX_REQUEST_SIZE = 1 * 1024 * 1024          // 1MB
 **Handling**:
 ```bash
 # Quick check
-aih status
+mcpstatus
 # Returns JSON with all health info
 
 # Detailed health endpoint
@@ -320,7 +320,7 @@ MAX_MEMORY_MB = 512  // Restart if exceeded
 MAX_CPU_PERCENT = 80 // Throttle new connections
 
 // Monitoring
-aih status
+mcpstatus
 # Shows resource usage, warns at 80%
 ```
 
@@ -340,28 +340,28 @@ aih status
 
 ### Config Corrupted
 ```bash
-aih restore ./backups/backup-latest.json
+mcprestore ./backups/backup-latest.json
 ```
 
 ### Server Won't Start
 ```bash
 # Check config validity
-cat aih-config.yaml | python -c "import yaml, sys; yaml.safe_load(sys.stdin)"
+cat mcp-config.yaml | python -c "import yaml, sys; yaml.safe_load(sys.stdin)"
 
 # Check logs
 cat logs/error.log | tail -50
 
 # Start with debug
-LOG_LEVEL=debug aih server start
+LOG_LEVEL=debug mcpserver start
 ```
 
 ### MCP Stuck in Bad State
 ```bash
-aih mcp disable problematic-mcp
-aih server restart
+mcp remote disable problematic-mcp
+mcpserver restart
 # Fix the MCP
-aih mcp test problematic-mcp
-aih mcp enable problematic-mcp
+mcp remote test problematic-mcp
+mcp remote enable problematic-mcp
 ```
 
 ### Out of Disk Space
@@ -394,6 +394,6 @@ For production, monitor these:
 
 Query via:
 ```bash
-aih status | jq '.server.status'
+mcpstatus | jq '.server.status'
 curl localhost:3000/health | jq '.memory.percent'
 ```

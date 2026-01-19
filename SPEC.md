@@ -1,4 +1,4 @@
-# AI Infrastructure Hub (AIH)
+# MCP-Server
 
 A portable, self-hosted infrastructure layer that provides MCPs, skills, plugins, hooks, and configuration to any compatible AI system.
 
@@ -75,7 +75,7 @@ Secures access:
 
 ## Data Schema
 
-### Master Configuration (`aih-config.yaml`)
+### Master Configuration (`mcp-config.yaml`)
 
 ```yaml
 version: "1.0"
@@ -246,7 +246,7 @@ When a client connects, the gateway returns all available tools:
       "source": "example-mcp"
     },
     {
-      "name": "aih__get_skill",
+      "name": "mcp__get_skill",
       "description": "Retrieve a skill definition",
       "inputSchema": {
         "type": "object",
@@ -282,7 +282,7 @@ Add to your MCP settings:
 {
   "mcpServers": {
     "ai-hub": {
-      "url": "https://aih.yourdomain.com/mcp/sse",
+      "url": "https://remote.yourdomain.com/mcp/sse",
       "headers": {
         "Authorization": "Bearer YOUR_API_KEY"
       }
@@ -299,7 +299,7 @@ Add to your MCP settings:
     "servers": {
       "ai-hub": {
         "command": "npx",
-        "args": ["-y", "@anthropic/mcp-remote", "https://aih.yourdomain.com/mcp/sse"],
+        "args": ["-y", "@anthropic/mcp-remote", "https://remote.yourdomain.com/mcp/sse"],
         "env": {
           "MCP_AUTH_TOKEN": "YOUR_API_KEY"
         }
@@ -313,12 +313,12 @@ Add to your MCP settings:
 
 ```javascript
 // Fetch your skills
-const skills = await fetch('https://aih.yourdomain.com/api/v1/skills', {
+const skills = await fetch('https://remote.yourdomain.com/api/v1/skills', {
   headers: { 'Authorization': 'Bearer YOUR_API_KEY' }
 }).then(r => r.json());
 
 // Get a specific config
-const claudeMd = await fetch('https://aih.yourdomain.com/api/v1/configs/claude_md', {
+const claudeMd = await fetch('https://remote.yourdomain.com/api/v1/configs/claude_md', {
   headers: { 'Authorization': 'Bearer YOUR_API_KEY' }
 }).then(r => r.text());
 ```
@@ -331,13 +331,13 @@ The hub itself exposes these tools:
 
 | Tool | Description |
 |------|-------------|
-| `aih__list_mcps` | List all available MCPs |
-| `aih__list_skills` | List all skills |
-| `aih__get_skill` | Get skill content by name |
-| `aih__list_configs` | List available configs |
-| `aih__get_config` | Get config content |
-| `aih__trigger_hook` | Manually trigger a hook |
-| `aih__health` | Check hub health |
+| `mcp__list_mcps` | List all available MCPs |
+| `mcp__list_skills` | List all skills |
+| `mcp__get_skill` | Get skill content by name |
+| `mcp__list_configs` | List available configs |
+| `mcp__get_config` | Get config content |
+| `mcp__trigger_hook` | Manually trigger a hook |
+| `mcp__health` | Check hub health |
 
 ---
 
@@ -345,7 +345,7 @@ The hub itself exposes these tools:
 
 ```
 ai-hub/
-├── aih-config.yaml          # Master configuration
+├── mcp-config.yaml          # Master configuration
 ├── .env                     # Secrets (gitignored)
 ├── server/                  # Hub server code
 │   ├── index.ts
@@ -460,19 +460,19 @@ services:
 
 ```bash
 # Initialize new hub
-aih init
+mcpinit
 
 # Add resources
-aih add mcp stripe https://mcp.stripe.com
-aih add skill code-review ./skills/code-review.md
+mcp remote add stripe https://mcp.stripe.com
+mcpadd skill code-review ./skills/code-review.md
 
 # Sync to server
-aih push
+mcppush
 
 # Pull latest
-aih pull
+mcppull
 
 # Generate client configs
-aih export cursor > .cursorrules
-aih export claude > CLAUDE.md
+mcpexport cursor > .cursorrules
+mcpexport claude > CLAUDE.md
 ```

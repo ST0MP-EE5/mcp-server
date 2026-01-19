@@ -97,7 +97,7 @@ async function main() {
   setupGracefulShutdown();
 
   server.listen(PORT, () => {
-    logger.info(`AI Hub started`, { port: PORT });
+    logger.info(`MCP Server started`, { port: PORT });
     
     // Output startup info as JSON for AI consumption
     if (process.env.NODE_ENV !== 'production') {

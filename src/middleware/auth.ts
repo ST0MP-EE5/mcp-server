@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import CryptoJS from 'crypto-js';
 import { logger } from '../utils/logger.js';
-import { AIHubConfig } from '../config.js';
+import { MCPServerConfig } from '../config.js';
 
 // Extend Express Request type
 declare global {
@@ -22,7 +22,7 @@ export function verifyApiKey(key: string, hash: string): boolean {
 }
 
 export function authMiddleware(req: Request, res: Response, next: NextFunction) {
-  const config = req.app.locals.config as AIHubConfig;
+  const config = req.app.locals.config as MCPServerConfig;
   
   // Extract API key from header
   const authHeader = req.headers.authorization;

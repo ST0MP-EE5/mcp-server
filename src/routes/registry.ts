@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { AIHubConfig, loadSkillContent, loadConfigContent } from '../config.js';
+import { MCPServerConfig, loadSkillContent, loadConfigContent } from '../config.js';
 import { requirePermission } from '../middleware/auth.js';
 import { logger } from '../utils/logger.js';
 
@@ -8,7 +8,7 @@ export function createRegistryRouter(): Router {
 
   // Get full registry
   router.get('/registry', requirePermission('registry'), (req: Request, res: Response) => {
-    const config = req.app.locals.config as AIHubConfig;
+    const config = req.app.locals.config as MCPServerConfig;
     
     res.json({
       name: config.name,
@@ -44,7 +44,7 @@ export function createRegistryRouter(): Router {
 
   // List MCPs
   router.get('/registry/mcps', requirePermission('mcps/*'), (req: Request, res: Response) => {
-    const config = req.app.locals.config as AIHubConfig;
+    const config = req.app.locals.config as MCPServerConfig;
     
     const mcps = [
       ...config.mcps.external.filter(m => m.enabled).map(m => ({
@@ -65,7 +65,7 @@ export function createRegistryRouter(): Router {
 
   // List skills
   router.get('/registry/skills', requirePermission('skills/*'), (req: Request, res: Response) => {
-    const config = req.app.locals.config as AIHubConfig;
+    const config = req.app.locals.config as MCPServerConfig;
     
     res.json({
       skills: config.skills.map(s => ({
@@ -78,7 +78,7 @@ export function createRegistryRouter(): Router {
 
   // Get specific skill content
   router.get('/skills/:name', requirePermission('skills/*'), async (req: Request, res: Response) => {
-    const config = req.app.locals.config as AIHubConfig;
+    const config = req.app.locals.config as MCPServerConfig;
     const { name } = req.params;
     
     const content = await loadSkillContent(config, name);
@@ -93,7 +93,7 @@ export function createRegistryRouter(): Router {
 
   // List plugins
   router.get('/registry/plugins', requirePermission('plugins/*'), (req: Request, res: Response) => {
-    const config = req.app.locals.config as AIHubConfig;
+    const config = req.app.locals.config as MCPServerConfig;
     
     res.json({
       plugins: config.plugins.map(p => ({
@@ -106,7 +106,7 @@ export function createRegistryRouter(): Router {
 
   // List configs
   router.get('/registry/configs', requirePermission('configs/*'), (req: Request, res: Response) => {
-    const config = req.app.locals.config as AIHubConfig;
+    const config = req.app.locals.config as MCPServerConfig;
     
     res.json({
       configs: Object.entries(config.configs).map(([key, value]) => ({
@@ -118,7 +118,7 @@ export function createRegistryRouter(): Router {
 
   // Get specific config content
   router.get('/configs/:name', requirePermission('configs/*'), async (req: Request, res: Response) => {
-    const config = req.app.locals.config as AIHubConfig;
+    const config = req.app.locals.config as MCPServerConfig;
     const { name } = req.params;
     
     const content = await loadConfigContent(config, name);
@@ -132,7 +132,7 @@ export function createRegistryRouter(): Router {
 
   // Trigger a hook manually
   router.post('/hooks/:name/trigger', requirePermission('hooks/*'), async (req: Request, res: Response) => {
-    const config = req.app.locals.config as AIHubConfig;
+    const config = req.app.locals.config as MCPServerConfig;
     const { name } = req.params;
     
     const hook = config.hooks.find(h => h.name === name);
@@ -164,7 +164,7 @@ export function createRegistryRouter(): Router {
   router.post('/reload', requirePermission('admin'), async (req: Request, res: Response) => {
     try {
       const { loadConfig } = await import('../config.js');
-      const newConfig = await loadConfig('./aih-config.yaml');
+      const newConfig = await loadConfig('./mcp-config.yaml');
       req.app.locals.config = newConfig;
       
       logger.info('Configuration manually reloaded');

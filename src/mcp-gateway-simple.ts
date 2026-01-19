@@ -1,6 +1,6 @@
 import { Express, Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
-import { AIHubConfig, loadSkillContent, loadConfigContent, MCPConfig } from './config.js';
+import { MCPServerConfig, loadSkillContent, loadConfigContent, MCPConfig } from './config.js';
 import { authMiddleware, verifyApiKey } from './middleware/auth.js';
 import { logger } from './utils/logger.js';
 
@@ -33,8 +33,8 @@ const clients = new Map<string, SSEClient>();
 function getHubTools(): MCPTool[] {
   return [
     {
-      name: 'aih__list_mcps',
-      description: 'List all available MCPs in the AI Hub',
+      name: 'mcp__list_mcps',
+      description: 'List all available MCPs in the MCP Server',
       inputSchema: {
         type: 'object',
         properties: {},
@@ -42,7 +42,7 @@ function getHubTools(): MCPTool[] {
       }
     },
     {
-      name: 'aih__list_skills',
+      name: 'mcp__list_skills',
       description: 'List all available skills',
       inputSchema: {
         type: 'object',
@@ -56,7 +56,7 @@ function getHubTools(): MCPTool[] {
       }
     },
     {
-      name: 'aih__get_skill',
+      name: 'mcp__get_skill',
       description: 'Get the content of a specific skill',
       inputSchema: {
         type: 'object',
@@ -70,7 +70,7 @@ function getHubTools(): MCPTool[] {
       }
     },
     {
-      name: 'aih__list_configs',
+      name: 'mcp__list_configs',
       description: 'List all available configuration files',
       inputSchema: {
         type: 'object',
@@ -79,7 +79,7 @@ function getHubTools(): MCPTool[] {
       }
     },
     {
-      name: 'aih__get_config',
+      name: 'mcp__get_config',
       description: 'Get the content of a specific configuration file',
       inputSchema: {
         type: 'object',
@@ -93,8 +93,8 @@ function getHubTools(): MCPTool[] {
       }
     },
     {
-      name: 'aih__health',
-      description: 'Check the health status of the AI Hub',
+      name: 'mcp__health',
+      description: 'Check the health status of the MCP Server',
       inputSchema: {
         type: 'object',
         properties: {},
@@ -106,12 +106,12 @@ function getHubTools(): MCPTool[] {
 
 // Execute hub's built-in tools
 async function executeHubTool(
-  config: AIHubConfig,
+  config: MCPServerConfig,
   toolName: string,
   args: any
 ): Promise<any> {
   switch (toolName) {
-    case 'aih__list_mcps': {
+    case 'mcp__list_mcps': {
       const mcps = [
         ...config.mcps.external.filter(m => m.enabled).map(m => ({
           name: m.name,
@@ -127,7 +127,7 @@ async function executeHubTool(
       return { mcps };
     }
 
-    case 'aih__list_skills': {
+    case 'mcp__list_skills': {
       let skills = config.skills;
       if (args.tag) {
         skills = skills.filter(s => s.tags.includes(args.tag));
@@ -141,7 +141,7 @@ async function executeHubTool(
       };
     }
 
-    case 'aih__get_skill': {
+    case 'mcp__get_skill': {
       const content = await loadSkillContent(config, args.name);
       if (!content) {
         throw new Error(`Skill '${args.name}' not found`);
@@ -149,7 +149,7 @@ async function executeHubTool(
       return { name: args.name, content };
     }
 
-    case 'aih__list_configs': {
+    case 'mcp__list_configs': {
       return {
         configs: Object.entries(config.configs).map(([key, value]) => ({
           name: key,
@@ -158,7 +158,7 @@ async function executeHubTool(
       };
     }
 
-    case 'aih__get_config': {
+    case 'mcp__get_config': {
       const content = await loadConfigContent(config, args.name);
       if (!content) {
         throw new Error(`Config '${args.name}' not found`);
@@ -166,7 +166,7 @@ async function executeHubTool(
       return { name: args.name, content };
     }
 
-    case 'aih__health': {
+    case 'mcp__health': {
       return {
         status: 'healthy',
         uptime: process.uptime(),
@@ -215,7 +215,7 @@ export function createMCPGateway(app: Express, basePath: string): void {
     }
 
     const apiKey = authHeader.substring(7);
-    const config = req.app.locals.config as AIHubConfig;
+    const config = req.app.locals.config as MCPServerConfig;
     const matchedKey = config.auth.api_keys.find(k => verifyApiKey(apiKey, k.key_hash));
     
     if (!matchedKey) {
@@ -256,7 +256,7 @@ export function createMCPGateway(app: Express, basePath: string): void {
 
   // Message handler for MCP protocol
   app.post(`${basePath}/messages`, authMiddleware, async (req: Request, res: Response) => {
-    const config = req.app.locals.config as AIHubConfig;
+    const config = req.app.locals.config as MCPServerConfig;
     const clientId = req.query.clientId as string;
     
     const client = clients.get(clientId);
@@ -278,7 +278,7 @@ export function createMCPGateway(app: Express, basePath: string): void {
             result: {
               protocolVersion: '2024-11-05',
               serverInfo: {
-                name: 'ai-hub',
+                name: 'mcp-server',
                 version: '1.0.0'
               },
               capabilities: {
@@ -324,7 +324,7 @@ export function createMCPGateway(app: Express, basePath: string): void {
           const { name, arguments: args } = message.params;
           
           // Check if it's a hub tool
-          if (name.startsWith('aih__')) {
+          if (name.startsWith('mcp__')) {
             const result = await executeHubTool(config, name, args || {});
             response = {
               jsonrpc: '2.0',
