@@ -41,6 +41,9 @@ Thumbs.db
 # Backups (may contain sensitive data)
 backups/
 
+# App spec with secrets (never commit)
+.do/app-with-secrets.yaml
+
 # Test coverage
 coverage/
 
