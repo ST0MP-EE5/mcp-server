@@ -79,8 +79,8 @@ function saveConfig(config) {
   }
 }
 
-function loadEnv() {
-  const env = {};
+function loadEnv(): Record<string, string> {
+  const env: Record<string, string> = {};
   if (fs.existsSync(ENV_PATH)) {
     const content = fs.readFileSync(ENV_PATH, 'utf-8');
     content.split('\n').forEach(line => {
@@ -91,7 +91,7 @@ function loadEnv() {
   return env;
 }
 
-function saveEnv(env) {
+function saveEnv(env: Record<string, string>) {
   const content = Object.entries(env)
     .map(([k, v]) => `${k}=${v}`)
     .join('\n');
@@ -546,8 +546,8 @@ const commands = {
         ok: true,
         configs: Object.entries(config.configs).map(([name, cfg]) => ({
           name,
-          file: cfg.file,
-          exists: fs.existsSync(cfg.file)
+          file: (cfg as { file: string }).file,
+          exists: fs.existsSync((cfg as { file: string }).file)
         }))
       });
     },
@@ -614,8 +614,9 @@ const commands = {
     
     // Include config contents
     for (const [name, cfg] of Object.entries(config.configs)) {
-      if (fs.existsSync(cfg.file)) {
-        backup.configs[name] = fs.readFileSync(cfg.file, 'utf-8');
+      const cfgFile = (cfg as { file: string }).file;
+      if (fs.existsSync(cfgFile)) {
+        backup.configs[name] = fs.readFileSync(cfgFile, 'utf-8');
       }
     }
     
@@ -652,16 +653,16 @@ const commands = {
       const skill = backup.config.skills.find(s => s.name === name);
       if (skill) {
         fs.mkdirSync(path.dirname(skill.file), { recursive: true });
-        fs.writeFileSync(skill.file, content);
+        fs.writeFileSync(skill.file, content as string);
       }
     }
-    
+
     // Restore configs
     for (const [name, content] of Object.entries(backup.configs)) {
       const cfg = backup.config.configs[name];
       if (cfg) {
-        fs.mkdirSync(path.dirname(cfg.file), { recursive: true });
-        fs.writeFileSync(cfg.file, content);
+        fs.mkdirSync(path.dirname((cfg as { file: string }).file), { recursive: true });
+        fs.writeFileSync((cfg as { file: string }).file, content as string);
       }
     }
     
@@ -1150,10 +1151,10 @@ echo '{"event":"setup_complete","url":"http://'$(curl -s ifconfig.me)':${port}'"
 };
 
 // Parse args and flags
-function parseArgs(argv) {
-  const args = [];
-  const flags = {};
-  
+function parseArgs(argv: string[]): { args: string[], flags: Record<string, string | boolean> } {
+  const args: string[] = [];
+  const flags: Record<string, string | boolean> = {};
+
   for (const arg of argv) {
     if (arg.startsWith('--')) {
       const [key, value] = arg.slice(2).split('=');
@@ -1164,7 +1165,7 @@ function parseArgs(argv) {
       args.push(arg);
     }
   }
-  
+
   return { args, flags };
 }
 
