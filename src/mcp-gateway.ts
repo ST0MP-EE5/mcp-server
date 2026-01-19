@@ -838,15 +838,19 @@ export function createMCPGateway(app: Express, basePath: string): void {
         }
       }
 
-      res.json(response);
-      
+      // Send response via SSE stream, not HTTP body
+      client.res.write(`event: message\ndata: ${JSON.stringify(response)}\n\n`);
+      res.status(202).send();
+
     } catch (error: any) {
       logger.error('MCP message error', { error: error.message, clientId });
-      res.json({
+      const errorResponse = {
         jsonrpc: '2.0',
         id: message.id,
         error: { code: -32000, message: error.message || 'Internal error' }
-      });
+      };
+      client.res.write(`event: message\ndata: ${JSON.stringify(errorResponse)}\n\n`);
+      res.status(202).send();
     }
   });
 
