@@ -9,8 +9,10 @@
   },
   "scripts": {
     "dev": "tsx watch src/index.ts",
+    "dev:streamable": "tsx watch src/mcp-streamable.ts",
     "build": "tsc",
     "start": "node dist/index.js",
+    "start:streamable": "node dist/mcp-streamable.js",
     "cli": "tsx src/cli.ts",
     "lint": "eslint src/",
     "test": "vitest"
