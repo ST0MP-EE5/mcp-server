@@ -19,7 +19,8 @@ async function main() {
   const app = express();
 
   // Trust proxy - required for DigitalOcean App Platform and other PaaS
-  app.set('trust proxy', true);
+  // Use 1 to trust the first proxy hop (DO's load balancer)
+  app.set('trust proxy', 1);
   const server = createServer(app);
 
   // Load configuration
@@ -48,7 +49,9 @@ async function main() {
     windowMs: 15 * 60 * 1000, // 15 minutes
     max: 1000, // requests per window
     standardHeaders: true,
-    legacyHeaders: false
+    legacyHeaders: false,
+    // Disable validation warnings for proxy setup
+    validate: { trustProxy: false, xForwardedForHeader: false }
   });
   app.use(limiter);
 

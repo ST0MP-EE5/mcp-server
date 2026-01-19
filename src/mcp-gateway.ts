@@ -639,6 +639,9 @@ export function createMCPGateway(app: Express, basePath: string): void {
     // Flush headers immediately to establish the SSE connection
     res.flushHeaders();
 
+    // Send initial comment to push through any proxy buffers
+    res.write(': connected\n\n');
+
     const clientId = uuidv4();
     const now = Date.now();
     
