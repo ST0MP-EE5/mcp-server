@@ -17,6 +17,9 @@ const PORT = process.env.PORT || 3000;
 
 async function main() {
   const app = express();
+
+  // Trust proxy - required for DigitalOcean App Platform and other PaaS
+  app.set('trust proxy', true);
   const server = createServer(app);
 
   // Load configuration

@@ -627,9 +627,17 @@ export function createMCPGateway(app: Express, basePath: string): void {
 
     // Set up SSE
     res.setHeader('Content-Type', 'text/event-stream');
-    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Cache-Control', 'no-cache, no-transform');
     res.setHeader('Connection', 'keep-alive');
     res.setHeader('X-Accel-Buffering', 'no');
+
+    // Disable Nagle's algorithm for immediate data sending
+    if (res.socket) {
+      res.socket.setNoDelay(true);
+    }
+
+    // Flush headers immediately to establish the SSE connection
+    res.flushHeaders();
 
     const clientId = uuidv4();
     const now = Date.now();
