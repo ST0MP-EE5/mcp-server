@@ -52,5 +52,5 @@ EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider http://localhost:3000/health || exit 1
 
-# Start with Streamable HTTP transport (works better with proxies/CDNs)
-CMD ["node", "dist/mcp-streamable.js"]
+# Start the server
+CMD ["node", "dist/index.js"]

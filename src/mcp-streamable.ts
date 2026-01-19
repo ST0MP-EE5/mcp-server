@@ -33,12 +33,12 @@ async function main() {
     });
   });
 
-  // Legacy SSE endpoint for backward compatibility
-  app.get('/mcp/sse', (_req, res) => {
-    res.status(410).json({
-      error: 'SSE endpoint deprecated. Use /mcp with Streamable HTTP transport instead.',
-      endpoint: '/mcp'
-    });
+  // SSE endpoint - redirect to main /mcp endpoint which handles both SSE and HTTP
+  app.get('/mcp/sse', async (req, res) => {
+    // Forward to /mcp handler with SSE Accept header
+    req.headers.accept = 'text/event-stream';
+    req.url = '/mcp';
+    app._router.handle(req, res, () => {});
   });
 
   // MCP endpoint - handles both GET (SSE) and POST (messages)
