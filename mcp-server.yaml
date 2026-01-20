@@ -3,10 +3,21 @@ name: "mcp-server"
 
 # Authentication
 auth:
+  # API Keys (traditional method)
   api_keys:
     - name: "main"
       key_hash: "sha256:1af16067fc0f37f16a54d69f103ca7e9fa71db70621ef24d8dfc75181263b0f1"
       permissions: ["*"]
+
+  # OAuth (recommended for Claude Code / Codex)
+  # Uses GitHub Device Flow - no redirect URLs needed
+  oauth:
+    enabled: true
+    provider: "github"
+    client_id: "${GITHUB_CLIENT_ID}"
+    jwt_secret: "${JWT_SECRET}"
+    token_expiry: "30d"
+    # allowed_users: []  # Optional: restrict to specific GitHub usernames
 
 # MCP Registry
 mcps:
@@ -92,11 +103,37 @@ configs:
   codex:
     file: "./configs/AGENTS.md"
 
+# Memory (persistent context layer powered by mem0)
+# Provides cross-session, cross-client memory for Claude Code, Codex, etc.
+memory:
+  enabled: true
+  provider: "cloud"  # "local" for self-hosted, "cloud" for mem0.ai managed
+
+  # Local provider config (when provider: "local")
+  # Requires OPENAI_API_KEY for embeddings
+  local:
+    embedder:
+      provider: "openai"
+      model: "text-embedding-3-small"
+    vectorStore:
+      provider: "memory"  # memory (dev), sqlite, or qdrant
+      # path: "./data/memory.db"  # For sqlite
+    llm:
+      provider: "openai"
+      model: "gpt-4o-mini"
+
+  # Cloud provider config (when provider: "cloud")
+  # Get API key at https://app.mem0.ai
+  cloud:
+    apiKey: "${MEM0_API_KEY}"
+
 # Secrets (environment variables needed)
 secrets:
   provider: "env"
   required:
     - GITHUB_PERSONAL_ACCESS_TOKEN  # For GitHub MCP
     - GREPTILE_API_KEY              # For Greptile MCP
+    - OPENAI_API_KEY                # For memory embeddings (mem0)
   optional:
     - LINEAR_API_KEY                # Linear uses OAuth, but API key can be used
+    - MEM0_API_KEY                  # For mem0 cloud (optional)

@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { MCPServerConfig, loadSkillContent, loadConfigContent, MCPConfig } from './config.js';
 import { verifyApiKey } from './middleware/auth.js';
 import { logger } from './utils/logger.js';
+import { isMemoryEnabled, getMemoryService } from './memory/index.js';
 
 // ============================================================================
 // CONSTANTS & LIMITS
@@ -229,11 +230,90 @@ function getHubTools(): MCPTool[] {
         properties: { name: { type: 'string' } },
         required: ['name']
       }
-    }
+    },
+    // Memory tools (only available if memory service is enabled)
+    ...(isMemoryEnabled() ? [
+      {
+        name: 'mcp__memory_add',
+        description: 'Store memories from messages. Memories are scoped by user (API key) and optionally by session/agent.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            messages: {
+              type: 'array',
+              description: 'Array of messages to extract memories from',
+              items: {
+                type: 'object',
+                properties: {
+                  role: { type: 'string', enum: ['user', 'assistant', 'system'] },
+                  content: { type: 'string' }
+                },
+                required: ['role', 'content']
+              }
+            },
+            session_id: { type: 'string', description: 'Optional session ID for scoping' },
+            agent_id: { type: 'string', description: 'Optional agent ID for scoping' },
+            metadata: { type: 'object', description: 'Optional metadata to attach to memories' }
+          },
+          required: ['messages']
+        }
+      },
+      {
+        name: 'mcp__memory_search',
+        description: 'Semantic search over stored memories. Returns relevant memories based on query.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            query: { type: 'string', description: 'Natural language search query' },
+            limit: { type: 'number', description: 'Max results to return (default: 10)' },
+            session_id: { type: 'string', description: 'Optional session ID filter' },
+            agent_id: { type: 'string', description: 'Optional agent ID filter' }
+          },
+          required: ['query']
+        }
+      },
+      {
+        name: 'mcp__memory_list',
+        description: 'List all memories with pagination.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            session_id: { type: 'string', description: 'Optional session ID filter' },
+            agent_id: { type: 'string', description: 'Optional agent ID filter' },
+            limit: { type: 'number', description: 'Max results per page (default: 50)' },
+            offset: { type: 'number', description: 'Offset for pagination (default: 0)' }
+          },
+          required: []
+        }
+      },
+      {
+        name: 'mcp__memory_delete',
+        description: 'Delete a specific memory by ID.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            memory_id: { type: 'string', description: 'The ID of the memory to delete' }
+          },
+          required: ['memory_id']
+        }
+      },
+      {
+        name: 'mcp__memory_delete_all',
+        description: 'Delete all memories (scoped by session/agent if provided).',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            session_id: { type: 'string', description: 'Optional session ID to scope deletion' },
+            agent_id: { type: 'string', description: 'Optional agent ID to scope deletion' }
+          },
+          required: []
+        }
+      }
+    ] as MCPTool[] : [])
   ];
 }
 
-async function executeHubTool(config: MCPServerConfig, toolName: string, args: any): Promise<any> {
+async function executeHubTool(config: MCPServerConfig, toolName: string, args: any, apiKeyName?: string): Promise<any> {
   switch (toolName) {
     case 'mcp__list_mcps': {
       const mcps = [
@@ -316,7 +396,7 @@ async function executeHubTool(config: MCPServerConfig, toolName: string, args: a
     case 'mcp__mcp_status': {
       const mcp = config.mcps.external.find(m => m.name === args.name);
       if (!mcp) throw new Error(`MCP '${args.name}' not found`);
-      
+
       const breaker = getCircuitBreaker(args.name);
       return {
         name: mcp.name,
@@ -329,6 +409,82 @@ async function executeHubTool(config: MCPServerConfig, toolName: string, args: a
           last_failure: breaker.lastFailure ? new Date(breaker.lastFailure).toISOString() : null
         }
       };
+    }
+
+    // Memory tools
+    case 'mcp__memory_add': {
+      if (!isMemoryEnabled()) {
+        throw new Error('Memory service is not enabled');
+      }
+      if (!apiKeyName) {
+        throw new Error('API key name required for memory operations');
+      }
+      const memoryService = getMemoryService();
+      return await memoryService.add(args.messages, {
+        user_id: apiKeyName,
+        session_id: args.session_id,
+        agent_id: args.agent_id,
+        metadata: args.metadata,
+      });
+    }
+
+    case 'mcp__memory_search': {
+      if (!isMemoryEnabled()) {
+        throw new Error('Memory service is not enabled');
+      }
+      if (!apiKeyName) {
+        throw new Error('API key name required for memory operations');
+      }
+      const memoryService = getMemoryService();
+      return await memoryService.search(args.query, {
+        user_id: apiKeyName,
+        session_id: args.session_id,
+        agent_id: args.agent_id,
+        limit: args.limit,
+      });
+    }
+
+    case 'mcp__memory_list': {
+      if (!isMemoryEnabled()) {
+        throw new Error('Memory service is not enabled');
+      }
+      if (!apiKeyName) {
+        throw new Error('API key name required for memory operations');
+      }
+      const memoryService = getMemoryService();
+      return await memoryService.list({
+        user_id: apiKeyName,
+        session_id: args.session_id,
+        agent_id: args.agent_id,
+        limit: args.limit,
+        offset: args.offset,
+      });
+    }
+
+    case 'mcp__memory_delete': {
+      if (!isMemoryEnabled()) {
+        throw new Error('Memory service is not enabled');
+      }
+      if (!apiKeyName) {
+        throw new Error('API key name required for memory operations');
+      }
+      const memoryService = getMemoryService();
+      return await memoryService.delete(args.memory_id, { user_id: apiKeyName });
+    }
+
+    case 'mcp__memory_delete_all': {
+      if (!isMemoryEnabled()) {
+        throw new Error('Memory service is not enabled');
+      }
+      if (!apiKeyName) {
+        throw new Error('API key name required for memory operations');
+      }
+      const memoryService = getMemoryService();
+      return await memoryService.deleteAll({
+        user_id: apiKeyName,
+        session_id: args.session_id,
+        agent_id: args.agent_id,
+      });
     }
 
     default:
@@ -932,8 +1088,8 @@ export function createMCPGateway(app: Express, basePath: string): void {
             let result: any;
 
             if (name.startsWith('mcp__')) {
-              // Hub tool
-              result = await executeHubTool(config, name, args || {});
+              // Hub tool (pass apiKeyName for memory scoping)
+              result = await executeHubTool(config, name, args || {}, client.apiKeyName);
             } else if (name.includes('__')) {
               // Namespaced tool - check local MCPs first, then external
               const [mcpName, toolName] = name.split('__', 2);

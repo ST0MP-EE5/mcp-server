@@ -49,3 +49,7 @@ coverage/
 
 # TypeScript cache
 *.tsbuildinfo
+
+# Local databases
+memory.db
+vector_store.db

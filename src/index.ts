@@ -7,9 +7,11 @@ import { createServer } from 'http';
 
 import { loadConfig, watchConfig } from './config.js';
 import { createRegistryRouter } from './routes/registry.js';
+import { createOAuthRouter } from './routes/oauth.js';
 import { createMCPGateway, setupGracefulShutdown } from './mcp-gateway.js';
 import { authMiddleware } from './middleware/auth.js';
 import { logger } from './utils/logger.js';
+import { initializeMemoryService } from './memory/index.js';
 
 dotenv.config();
 
@@ -26,12 +28,17 @@ async function main() {
   // Load configuration
   const config = await loadConfig('./mcp-server.yaml');
 
+  // Initialize memory service if configured
+  if (config.memory?.enabled) {
+    await initializeMemoryService(config.memory);
+  }
+
   // Watch for config changes (hot reload)
   watchConfig('./mcp-server.yaml', (newConfig) => {
     logger.info('Configuration reloaded');
     app.locals.config = newConfig;
   });
-  
+
   app.locals.config = config;
 
   // Security middleware
@@ -69,6 +76,9 @@ async function main() {
       timestamp: new Date().toISOString()
     });
   });
+
+  // OAuth routes (public)
+  app.use('/oauth', createOAuthRouter());
 
   // API routes (authenticated)
   app.use('/api/v1', authMiddleware, createRegistryRouter());

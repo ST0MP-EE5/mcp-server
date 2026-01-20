@@ -25,6 +25,14 @@ services:
       - key: NODE_ENV
         value: production
         scope: RUN_AND_BUILD_TIME
+      # OAuth authentication
+      - key: GITHUB_CLIENT_ID
+        scope: RUN_AND_BUILD_TIME
+        type: SECRET
+      - key: JWT_SECRET
+        scope: RUN_AND_BUILD_TIME
+        type: SECRET
+      # MCPs
       - key: DO_API_TOKEN
         scope: RUN_AND_BUILD_TIME
         type: SECRET
@@ -32,6 +40,12 @@ services:
         scope: RUN_AND_BUILD_TIME
         type: SECRET
       - key: GREPTILE_API_KEY
+        scope: RUN_AND_BUILD_TIME
+        type: SECRET
+      - key: OPENAI_API_KEY
+        scope: RUN_AND_BUILD_TIME
+        type: SECRET
+      - key: MEM0_API_KEY
         scope: RUN_AND_BUILD_TIME
         type: SECRET
 

@@ -49,9 +49,39 @@ export interface AuthConfig {
     permissions: string[];
   }>;
   oauth?: {
-    provider: string;
-    client_id: string;
-    allowed_users: string[];
+    enabled: boolean;
+    provider: 'github';
+    client_id?: string;
+    jwt_secret?: string;
+    token_expiry?: string;
+    allowed_users?: string[];  // Optional: restrict to specific GitHub usernames
+  };
+}
+
+export interface MemoryConfig {
+  enabled: boolean;
+  provider: 'local' | 'cloud';
+
+  local?: {
+    embedder?: {
+      provider: string;
+      model: string;
+    };
+    vectorStore?: {
+      provider: 'memory' | 'sqlite' | 'qdrant';
+      path?: string;
+      host?: string;
+      port?: number;
+    };
+    llm?: {
+      provider: string;
+      model: string;
+    };
+    historyDbPath?: string;
+  };
+
+  cloud?: {
+    apiKey?: string;
   };
 }
 
@@ -67,6 +97,7 @@ export interface MCPServerConfig {
   plugins: PluginConfig[];
   hooks: HookConfig[];
   configs: Record<string, ConfigFile>;
+  memory?: MemoryConfig;
 }
 
 // Resolve environment variables in config values
