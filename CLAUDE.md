@@ -11,6 +11,7 @@ This system is **AI-native**: all interfaces output machine-readable JSON, no hu
 | Command | Description |
 |---------|-------------|
 | `/codex-plan <task>` | Create detailed implementation plan using Codex 5.2 with xhigh reasoning |
+| `/codex-hybrid <task>` | Full-stack development with Claude+Codex hybrid (MCP tools + extended reasoning) |
 | `/sync-setup <action>` | Backup, restore, or transfer Claude Code setup (hooks, plugins, settings) |
 
 ### UI & React Development
@@ -36,6 +37,31 @@ This system is **AI-native**: all interfaces output machine-readable JSON, no hu
 | `/speckit.analyze` | Cross-artifact consistency analysis |
 | `/speckit.checklist` | Generate custom checklist for feature |
 | `/speckit.taskstoissues` | Convert tasks to GitHub issues |
+
+### Codex Hybrid Workflow
+
+The `/codex-hybrid` command orchestrates a powerful development workflow combining Claude Code's MCP tools with Codex's extended reasoning.
+
+**Workflow Phases:**
+
+1. **Context & Setup (Claude)** - Greptile codebase search, Context7 docs, Memory check, Beads task creation
+2. **Clarification (Claude)** - Ask 3-6 targeted questions via AskUser
+3. **Planning (Codex)** - Generate detailed implementation plan with xhigh reasoning
+4. **Implementation Loop (Codex + Greptile)** - Phase-by-phase execution with 5/5 quality gate
+5. **Finalization (Claude)** - Git commit, PR creation, Memory updates
+
+**Key Features:**
+- Auto-injects MCP token from environment for Codex MCP access
+- State persistence in `.codex-state/` for context compaction recovery
+- Greptile Ralph Loop enforces 5/5 quality score before advancing phases
+- Beads task tracking for progress visibility
+
+**Usage:**
+```
+/codex-hybrid implement user authentication with OAuth
+/codex-hybrid add dark mode support to the application
+/codex-hybrid refactor the API layer to use GraphQL
+```
 
 ## CLI Reference
 
@@ -136,6 +162,8 @@ When user says → Execute command:
 | "deploy to droplet" | `mcp deploy droplet-script --repo=X` |
 | "check doctl" | `mcp deploy doctl-check` |
 | "what's the app status" | `mcp deploy app-list` |
+| "implement with codex" / "hybrid implement" | `/codex-hybrid <task>` |
+| "full stack implementation" | `/codex-hybrid <task>` |
 
 ## Deployment (Self-Hosted)
 
