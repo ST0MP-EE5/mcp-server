@@ -141,13 +141,13 @@ echo -e "${YELLOW}Authentication Setup${NC}"
 echo -e "${BLUE}═══════════════════════════════════════════════════════════════${NC}"
 echo ""
 
-# Check if running interactively
-if [ -t 0 ] || [ -e /dev/tty ]; then
-  read -p "Do you want to authenticate now via GitHub OAuth? (y/n) " -n 1 -r </dev/tty 2>/dev/null || REPLY="n"
+# Check if running interactively with a real TTY
+if [ -t 0 ] && [ -c /dev/tty ]; then
+  read -p "Do you want to authenticate now via GitHub OAuth? (y/n) " -n 1 -r </dev/tty
   echo ""
 else
   REPLY="n"
-  echo -e "${YELLOW}Non-interactive mode detected. Skipping OAuth prompt.${NC}"
+  echo -e "${YELLOW}Non-interactive mode. Run OAuth manually after install.${NC}"
 fi
 
 if [[ $REPLY =~ ^[Yy]$ ]]; then
