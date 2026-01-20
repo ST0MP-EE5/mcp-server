@@ -123,6 +123,11 @@ export async function pollForToken(
     throw new Error(`GitHub OAuth error: ${data.error_description || data.error}`);
   }
 
+  // Validate required fields are present before returning
+  if (!data.access_token || !data.token_type || !data.scope) {
+    throw new Error('GitHub OAuth response missing required fields');
+  }
+
   return {
     access_token: data.access_token,
     token_type: data.token_type,
