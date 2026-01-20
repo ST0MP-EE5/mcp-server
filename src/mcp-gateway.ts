@@ -2,6 +2,7 @@ import { Express, Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import { MCPServerConfig, loadSkillContent, loadConfigContent, MCPConfig } from './config.js';
 import { verifyApiKey } from './middleware/auth.js';
+import { verifyToken as verifyOAuthToken, GitHubOAuthConfig } from './oauth/github.js';
 import { logger } from './utils/logger.js';
 import { isMemoryEnabled, getMemoryService } from './memory/index.js';
 
@@ -899,22 +900,47 @@ export function createMCPGateway(app: Express, basePath: string): void {
   // -------------------------------------------------------------------------
   
   app.get(`${basePath}/sse`, (req: Request, res: Response) => {
-    // Auth
+    // Auth - supports both API keys and OAuth JWT tokens
     const authHeader = req.headers.authorization;
     if (!authHeader?.startsWith('Bearer ')) {
-      return res.status(401).json({ 
-        ok: false, 
+      return res.status(401).json({
+        ok: false,
         error: { code: 'AUTH_REQUIRED', message: 'Missing authorization header' }
       });
     }
 
-    const apiKey = authHeader.substring(7);
+    const token = authHeader.substring(7);
     const config = req.app.locals.config as MCPServerConfig;
-    const matchedKey = config.auth.api_keys.find(k => verifyApiKey(apiKey, k.key_hash));
-    
-    if (!matchedKey) {
-      return res.status(401).json({ 
-        ok: false, 
+
+    // Try API key first
+    let authKeyName: string | undefined;
+    const matchedKey = config.auth.api_keys.find(k => verifyApiKey(token, k.key_hash));
+
+    if (matchedKey) {
+      authKeyName = matchedKey.name;
+    } else if (config.auth.oauth?.enabled) {
+      // Try OAuth JWT
+      const jwtSecret = config.auth.oauth.jwt_secret || process.env.JWT_SECRET;
+      if (jwtSecret) {
+        const oauthConfig: GitHubOAuthConfig = { clientId: '', jwtSecret };
+        const decoded = verifyOAuthToken(oauthConfig, token);
+        if (decoded) {
+          // Check allowed users if configured
+          const allowedUsers = config.auth.oauth.allowed_users;
+          if (allowedUsers && allowedUsers.length > 0 && !allowedUsers.includes(decoded.sub)) {
+            return res.status(403).json({
+              ok: false,
+              error: { code: 'USER_NOT_ALLOWED', message: 'User not authorized' }
+            });
+          }
+          authKeyName = `github:${decoded.sub}`;
+        }
+      }
+    }
+
+    if (!authKeyName) {
+      return res.status(401).json({
+        ok: false,
         error: { code: 'INVALID_KEY', message: 'Invalid API key' }
       });
     }
@@ -928,7 +954,7 @@ export function createMCPGateway(app: Express, basePath: string): void {
       });
     }
 
-    const keyConnections = connectionsByKey.get(matchedKey.name) || new Set();
+    const keyConnections = connectionsByKey.get(authKeyName) || new Set();
     if (keyConnections.size >= LIMITS.MAX_CONNECTIONS_PER_KEY) {
       return res.status(429).json({ 
         ok: false, 
@@ -972,7 +998,7 @@ export function createMCPGateway(app: Express, basePath: string): void {
     const client: SSEClient = {
       id: clientId,
       res,
-      apiKeyName: matchedKey.name,
+      apiKeyName: authKeyName,
       connectedAt: now,
       lastActivity: now,
       heartbeatInterval
@@ -981,14 +1007,14 @@ export function createMCPGateway(app: Express, basePath: string): void {
     clients.set(clientId, client);
     
     // Track by key
-    if (!connectionsByKey.has(matchedKey.name)) {
-      connectionsByKey.set(matchedKey.name, new Set());
+    if (!connectionsByKey.has(authKeyName)) {
+      connectionsByKey.set(authKeyName, new Set());
     }
-    connectionsByKey.get(matchedKey.name)!.add(clientId);
+    connectionsByKey.get(authKeyName)!.add(clientId);
 
     logger.info(`MCP client connected`, { 
       clientId, 
-      apiKeyName: matchedKey.name,
+      apiKeyName: authKeyName,
       totalConnections: clients.size 
     });
 
