@@ -1,7 +1,0 @@
-{
-  "phase": 1,
-  "task": "Create hello.ts script",
-  "requirements": "Direct execution with bun/ts-node",
-  "main_task": "DO-tkq",
-  "timestamp": "2026-01-20T00:00:00Z"
-}
