@@ -34,13 +34,25 @@ interface MCPTool {
   inputSchema: object;
 }
 
+interface MCPMessageParams {
+  name?: string;
+  arguments?: Record<string, unknown>;
+  [key: string]: unknown;
+}
+
+interface MCPError {
+  code: number;
+  message: string;
+  data?: unknown;
+}
+
 interface MCPMessage {
   jsonrpc: '2.0';
   id?: string | number;
   method?: string;
-  params?: any;
-  result?: any;
-  error?: any;
+  params?: MCPMessageParams;
+  result?: unknown;
+  error?: MCPError;
 }
 
 interface SSEClient {
@@ -157,7 +169,9 @@ function cleanupStaleConnections(): void {
       logger.info(`Removing stale connection: ${clientId}`);
       try {
         client.res.end();
-      } catch {}
+      } catch {
+        // Connection already closed, safe to ignore
+      }
       cleanupClient(clientId);
     }
     // Check for max lifetime
@@ -166,7 +180,9 @@ function cleanupStaleConnections(): void {
       try {
         client.res.write(`event: reconnect\ndata: {"reason": "max_lifetime"}\n\n`);
         client.res.end();
-      } catch {}
+      } catch {
+        // Connection already closed, safe to ignore
+      }
       cleanupClient(clientId);
     }
   }
@@ -519,20 +535,7 @@ async function routeToExternalMCP(
   try {
     logger.debug(`Routing ${toolName} to ${mcp.name}`, { args });
 
-    // Build headers for Streamable HTTP transport
-    // Accept header MUST include both application/json and text/event-stream per MCP spec
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-      'Accept': 'application/json, text/event-stream',
-    };
-
-    if (mcp.auth) {
-      if (mcp.auth.type === 'bearer' && mcp.auth.token) {
-        headers['Authorization'] = `Bearer ${mcp.auth.token}`;
-      } else if (mcp.auth.type === 'api_key' && mcp.auth.token && mcp.auth.header) {
-        headers[mcp.auth.header] = mcp.auth.token;
-      }
-    }
+    const headers = buildMCPHeaders(mcp);
 
     // Send MCP tool call request
     const response = await fetch(mcp.url, {
@@ -588,6 +591,24 @@ function resetCircuitBreaker(mcpName: string): void {
   }
 }
 
+// Build auth headers for MCP requests
+function buildMCPHeaders(mcp: MCPConfig): Record<string, string> {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json, text/event-stream',
+  };
+
+  if (mcp.auth) {
+    if (mcp.auth.type === 'bearer' && mcp.auth.token) {
+      headers['Authorization'] = `Bearer ${mcp.auth.token}`;
+    } else if (mcp.auth.type === 'api_key' && mcp.auth.token && mcp.auth.header) {
+      headers[mcp.auth.header] = mcp.auth.token;
+    }
+  }
+
+  return headers;
+}
+
 // Cache for external MCP tools
 const externalMCPToolsCache = new Map<string, { tools: MCPTool[]; fetchedAt: number }>();
 const TOOL_CACHE_TTL_MS = 300000; // 5 minutes
@@ -604,19 +625,7 @@ async function fetchExternalMCPTools(mcp: MCPConfig): Promise<MCPTool[]> {
   }
 
   try {
-    // Build headers for Streamable HTTP transport
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-      'Accept': 'application/json, text/event-stream',
-    };
-
-    if (mcp.auth) {
-      if (mcp.auth.type === 'bearer' && mcp.auth.token) {
-        headers['Authorization'] = `Bearer ${mcp.auth.token}`;
-      } else if (mcp.auth.type === 'api_key' && mcp.auth.token && mcp.auth.header) {
-        headers[mcp.auth.header] = mcp.auth.token;
-      }
-    }
+    const headers = buildMCPHeaders(mcp);
 
     // First try to initialize the MCP
     const initResponse = await fetch(mcp.url, {
@@ -850,7 +859,6 @@ async function routeToLocalMCP(
     throw new Error(`Local MCP ${mcp.name} is not ready`);
   }
 
-  const fullToolName = `${mcp.name}__${toolName}`;
   logger.debug(`Routing to local MCP`, { mcp: mcp.name, tool: toolName, args });
 
   const result = await sendToLocalMCP(mcp.name, {
@@ -1286,7 +1294,9 @@ export function setupGracefulShutdown(): void {
       try {
         client.res.write(`event: shutdown\ndata: {"reason": "server_shutdown"}\n\n`);
         client.res.end();
-      } catch {}
+      } catch {
+        // Connection already closed, safe to ignore during shutdown
+      }
       cleanupClient(clientId);
     }
     
