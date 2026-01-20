@@ -4,6 +4,39 @@
 
 This system is **AI-native**: all interfaces output machine-readable JSON, no human UI exists. All management is via CLI or API.
 
+## Available Slash Commands
+
+### Development & Planning
+
+| Command | Description |
+|---------|-------------|
+| `/codex-plan <task>` | Create detailed implementation plan using Codex 5.2 with xhigh reasoning |
+| `/sync-setup <action>` | Backup, restore, or transfer Claude Code setup (hooks, plugins, settings) |
+
+### UI & React Development
+
+| Command | Description |
+|---------|-------------|
+| `/ui-skills [file]` | Apply opinionated UI constraints (Tailwind, accessibility, animation, typography) |
+| `/rams [file]` | Run accessibility (WCAG 2.1) and visual design review |
+| `/vercel-labs:react-best-practices [file]` | Apply Vercel's 45 React/Next.js performance rules |
+| `/vercel-labs:web-design-guidelines [file]` | Review against web interface design standards |
+| `/vercel-labs:claude.ai:vercel-deploy-claimable` | Deploy to Vercel with claimable preview URL |
+
+### Spec Kit (Feature Development)
+
+| Command | Description |
+|---------|-------------|
+| `/speckit.constitution` | Create/update project constitution |
+| `/speckit.specify` | Create feature specification from description |
+| `/speckit.clarify` | Identify underspecified areas and ask clarification questions |
+| `/speckit.plan` | Generate implementation plan |
+| `/speckit.tasks` | Generate dependency-ordered tasks |
+| `/speckit.implement` | Execute the implementation plan |
+| `/speckit.analyze` | Cross-artifact consistency analysis |
+| `/speckit.checklist` | Generate custom checklist for feature |
+| `/speckit.taskstoissues` | Convert tasks to GitHub issues |
+
 ## CLI Reference
 
 All commands output JSON to stdout. Exit code 0 = success, 1 = error.
