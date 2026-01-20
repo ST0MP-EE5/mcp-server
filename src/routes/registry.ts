@@ -169,8 +169,9 @@ export function createRegistryRouter(): Router {
       
       logger.info('Configuration manually reloaded');
       res.json({ success: true, message: 'Configuration reloaded' });
-    } catch (error) {
-      logger.error('Failed to reload config:', error);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      logger.error('Failed to reload config:', { error: message });
       res.status(500).json({ error: 'Failed to reload configuration' });
     }
   });

@@ -88,11 +88,12 @@ export function createOAuthRouter(): Router {
         interval: deviceResponse.interval,
         instructions: `Go to ${deviceResponse.verification_uri} and enter code: ${deviceResponse.user_code}`,
       });
-    } catch (error: any) {
-      logger.error('OAuth device flow failed', { error: error.message });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      logger.error('OAuth device flow failed', { error: message });
       res.status(500).json({
         ok: false,
-        error: { code: 'OAUTH_ERROR', message: error.message },
+        error: { code: 'OAUTH_ERROR', message },
       });
     }
   });
@@ -178,17 +179,18 @@ export function createOAuthRouter(): Router {
           example: `curl -H "Authorization: Bearer ${token.substring(0, 20)}..." https://your-server/mcp/sse`,
         },
       });
-    } catch (error: any) {
-      logger.error('OAuth token exchange failed', { error: error.message });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      logger.error('OAuth token exchange failed', { error: message });
 
       // Check for specific errors
-      if (error.message.includes('expired') || error.message.includes('denied')) {
+      if (message.includes('expired') || message.includes('denied')) {
         pendingFlows.delete(user_code);
       }
 
       res.status(400).json({
         ok: false,
-        error: { code: 'TOKEN_ERROR', message: error.message },
+        error: { code: 'TOKEN_ERROR', message },
       });
     }
   });
