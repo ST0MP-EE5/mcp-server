@@ -39,15 +39,56 @@ import crypto from 'crypto';
 import yaml from 'yaml';
 import { spawn, execSync } from 'child_process';
 
+// Type definitions for CLI
+interface APIKey {
+  name: string;
+  key_hash: string;
+  permissions: string[];
+}
+
+interface MCPExternal {
+  name: string;
+  url: string;
+  auth: { type: string; token: string; header?: string } | null;
+  enabled: boolean;
+}
+
+interface MCPLocal {
+  name: string;
+  port?: number;
+  path?: string;
+  enabled: boolean;
+}
+
+interface Skill {
+  name: string;
+  description: string;
+  file: string;
+  tags: string[];
+}
+
+interface CLIConfig {
+  version: string;
+  name: string;
+  auth: { api_keys: APIKey[]; oauth?: Record<string, unknown> };
+  mcps: { external: MCPExternal[]; local: MCPLocal[] };
+  skills: Skill[];
+  plugins: unknown[];
+  hooks: unknown[];
+  configs: Record<string, { file: string }>;
+}
+
+type CLIFlags = Record<string, string | boolean>;
+
 // Output helpers - all output is JSON
-const output = (data) => {
+const output = (data: Record<string, unknown>): never => {
   console.log(JSON.stringify(data, null, 2));
   process.exit(0);
 };
 
-const error = (message, code = 'ERROR', details = null) => {
-  console.error(JSON.stringify({ 
-    ok: false, 
+const error = (message: string, code = 'ERROR', details: string | null = null): never => {
+  console.error(JSON.stringify({
+    ok: false,
     error: { code, message, details },
     timestamp: new Date().toISOString()
   }, null, 2));
@@ -58,24 +99,26 @@ const error = (message, code = 'ERROR', details = null) => {
 const CONFIG_PATH = process.env.MCP_SERVER_CONFIG || './mcp-server.yaml';
 const ENV_PATH = process.env.MCP_SERVER_ENV || './.env';
 
-function loadConfig() {
+function loadConfig(): CLIConfig {
   try {
     if (!fs.existsSync(CONFIG_PATH)) {
       error('Config not found. Run: mcp-server init', 'CONFIG_NOT_FOUND');
     }
     const content = fs.readFileSync(CONFIG_PATH, 'utf-8');
-    return yaml.parse(content);
+    return yaml.parse(content) as CLIConfig;
   } catch (e) {
-    error(`Failed to load config: ${e.message}`, 'CONFIG_PARSE_ERROR');
+    const message = e instanceof Error ? e.message : String(e);
+    error(`Failed to load config: ${message}`, 'CONFIG_PARSE_ERROR');
   }
 }
 
-function saveConfig(config) {
+function saveConfig(config: CLIConfig): boolean {
   try {
     fs.writeFileSync(CONFIG_PATH, yaml.stringify(config, { lineWidth: 0 }));
     return true;
   } catch (e) {
-    error(`Failed to save config: ${e.message}`, 'CONFIG_WRITE_ERROR');
+    const message = e instanceof Error ? e.message : String(e);
+    error(`Failed to save config: ${message}`, 'CONFIG_WRITE_ERROR');
   }
 }
 
@@ -173,6 +216,7 @@ const commands = {
         process.kill(serverPid, 0); // Check if process exists
         serverStatus = 'running';
       } catch {
+        // Process doesn't exist, clean up stale PID file
         serverStatus = 'dead';
         fs.unlinkSync(pidFile);
       }
@@ -195,7 +239,9 @@ const commands = {
     try {
       const du = execSync('du -sh . 2>/dev/null', { encoding: 'utf-8' }).trim();
       diskUsage = du.split('\t')[0];
-    } catch {}
+    } catch {
+      // Disk usage check is optional, continue without it
+    }
     
     output({
       ok: true,
@@ -920,6 +966,7 @@ echo '{"event":"setup_complete","url":"http://'$(curl -s ifconfig.me)':${port}'"
         account = JSON.parse(acct);
         authenticated = true;
       } catch {
+        // doctl not authenticated or failed - set authenticated to false
         authenticated = false;
       }
       
@@ -1103,6 +1150,7 @@ echo '{"event":"setup_complete","url":"http://'$(curl -s ifconfig.me)':${port}'"
         try {
           return JSON.parse(line);
         } catch {
+          // Line is not valid JSON, return raw text
           return { raw: line };
         }
       });
