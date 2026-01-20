@@ -1,4 +1,4 @@
-import { readFile, watch } from 'fs/promises';
+import { readFile } from 'fs/promises';
 import { parse } from 'yaml';
 import chokidar from 'chokidar';
 import { logger } from './utils/logger.js';
@@ -100,20 +100,26 @@ export interface MCPServerConfig {
   memory?: MemoryConfig;
 }
 
-// Resolve environment variables in config values
-function resolveEnvVars(obj: any): any {
+/**
+ * Resolve environment variables in config values
+ * Replaces ${VAR_NAME} patterns with environment variable values
+ *
+ * Note: Uses generic type parameter to preserve the input type structure
+ * while performing recursive string replacement on all nested values.
+ */
+function resolveEnvVars<T>(obj: T): T {
   if (typeof obj === 'string') {
-    return obj.replace(/\$\{([^}]+)\}/g, (_, key) => process.env[key] || '');
+    return obj.replace(/\$\{([^}]+)\}/g, (_, key) => process.env[key] || '') as T;
   }
   if (Array.isArray(obj)) {
-    return obj.map(resolveEnvVars);
+    return obj.map(resolveEnvVars) as T;
   }
   if (obj && typeof obj === 'object') {
-    const result: any = {};
+    const result: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(obj)) {
       result[key] = resolveEnvVars(value);
     }
-    return result;
+    return result as T;
   }
   return obj;
 }
@@ -123,8 +129,9 @@ export async function loadConfig(path: string): Promise<MCPServerConfig> {
     const content = await readFile(path, 'utf-8');
     const config = parse(content) as MCPServerConfig;
     return resolveEnvVars(config);
-  } catch (error) {
-    logger.error(`Failed to load config from ${path}:`, error);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    logger.error(`Failed to load config from ${path}:`, { error: message });
     throw error;
   }
 }
@@ -139,14 +146,12 @@ export function watchConfig(path: string, onChange: (config: MCPServerConfig) =>
     try {
       const config = await loadConfig(path);
       onChange(config);
-    } catch (error) {
-      logger.error('Failed to reload config:', error);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      logger.error('Failed to reload config:', { error: message });
     }
   });
 }
-
-// Skill content cache
-const skillCache = new Map<string, { content: string; mtime: number }>();
 
 export async function loadSkillContent(config: MCPServerConfig, skillName: string): Promise<string | null> {
   const skill = config.skills.find(s => s.name === skillName);
@@ -155,8 +160,9 @@ export async function loadSkillContent(config: MCPServerConfig, skillName: strin
   try {
     const content = await readFile(skill.file, 'utf-8');
     return content;
-  } catch (error) {
-    logger.error(`Failed to load skill ${skillName}:`, error);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    logger.error(`Failed to load skill ${skillName}:`, { error: message });
     return null;
   }
 }
@@ -168,8 +174,9 @@ export async function loadConfigContent(config: MCPServerConfig, configName: str
   try {
     const content = await readFile(configDef.file, 'utf-8');
     return content;
-  } catch (error) {
-    logger.error(`Failed to load config ${configName}:`, error);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    logger.error(`Failed to load config ${configName}:`, { error: message });
     return null;
   }
 }
