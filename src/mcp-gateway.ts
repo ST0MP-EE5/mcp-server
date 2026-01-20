@@ -352,18 +352,59 @@ async function routeToExternalMCP(
     throw new Error(reason);
   }
 
+  if (!mcp.url) {
+    throw new Error(`MCP ${mcp.name} has no URL configured`);
+  }
+
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeout);
 
   try {
-    // This is a simplified implementation
-    // Real implementation would maintain SSE connection to external MCP
-    // and route tool calls through it
-
     logger.debug(`Routing ${toolName} to ${mcp.name}`, { args });
 
-    // Placeholder for actual MCP client implementation
-    throw new Error(`External MCP routing not yet implemented for ${mcp.name}`);
+    // Build authorization headers
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+
+    if (mcp.auth) {
+      if (mcp.auth.type === 'bearer' && mcp.auth.token) {
+        headers['Authorization'] = `Bearer ${mcp.auth.token}`;
+      } else if (mcp.auth.type === 'api_key' && mcp.auth.token && mcp.auth.header) {
+        headers[mcp.auth.header] = mcp.auth.token;
+      }
+    }
+
+    // Send MCP tool call request
+    const response = await fetch(mcp.url, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        id: Date.now(),
+        method: 'tools/call',
+        params: {
+          name: toolName,
+          arguments: args
+        }
+      }),
+      signal: controller.signal
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    const result = await response.json() as { error?: { message?: string }; result?: any };
+
+    if (result.error) {
+      throw new Error(result.error.message || JSON.stringify(result.error));
+    }
+
+    // Reset circuit breaker on success
+    resetCircuitBreaker(mcp.name);
+
+    return result.result;
 
   } catch (error: any) {
     if (error.name === 'AbortError') {
@@ -376,6 +417,117 @@ async function routeToExternalMCP(
 
   } finally {
     clearTimeout(timeoutId);
+  }
+}
+
+// Reset circuit breaker on success
+function resetCircuitBreaker(mcpName: string): void {
+  const breaker = circuitBreakers.get(mcpName);
+  if (breaker) {
+    breaker.failures = 0;
+    breaker.state = 'closed';
+  }
+}
+
+// Cache for external MCP tools
+const externalMCPToolsCache = new Map<string, { tools: MCPTool[]; fetchedAt: number }>();
+const TOOL_CACHE_TTL_MS = 300000; // 5 minutes
+
+async function fetchExternalMCPTools(mcp: MCPConfig): Promise<MCPTool[]> {
+  if (!mcp.url) {
+    return [];
+  }
+
+  // Check cache
+  const cached = externalMCPToolsCache.get(mcp.name);
+  if (cached && Date.now() - cached.fetchedAt < TOOL_CACHE_TTL_MS) {
+    return cached.tools;
+  }
+
+  try {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+
+    if (mcp.auth) {
+      if (mcp.auth.type === 'bearer' && mcp.auth.token) {
+        headers['Authorization'] = `Bearer ${mcp.auth.token}`;
+      } else if (mcp.auth.type === 'api_key' && mcp.auth.token && mcp.auth.header) {
+        headers[mcp.auth.header] = mcp.auth.token;
+      }
+    }
+
+    // First try to initialize the MCP
+    const initResponse = await fetch(mcp.url, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'initialize',
+        params: {
+          protocolVersion: '2024-11-05',
+          clientInfo: { name: 'mcp-server-proxy', version: '1.0.0' },
+          capabilities: {}
+        }
+      }),
+      signal: AbortSignal.timeout(10000)
+    });
+
+    if (!initResponse.ok) {
+      throw new Error(`Initialize failed: HTTP ${initResponse.status}`);
+    }
+
+    // Then fetch tools
+    const toolsResponse = await fetch(mcp.url, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        id: 2,
+        method: 'tools/list',
+        params: {}
+      }),
+      signal: AbortSignal.timeout(10000)
+    });
+
+    if (!toolsResponse.ok) {
+      throw new Error(`tools/list failed: HTTP ${toolsResponse.status}`);
+    }
+
+    const result = await toolsResponse.json() as { error?: { message?: string }; result?: { tools?: MCPTool[] } };
+
+    if (result.error) {
+      throw new Error(result.error.message || 'Unknown error');
+    }
+
+    const tools = result.result?.tools || [];
+
+    // Cache the tools with namespace prefix
+    const namespacedTools = tools.map(t => ({
+      ...t,
+      name: `${mcp.name}__${t.name}`
+    }));
+
+    externalMCPToolsCache.set(mcp.name, {
+      tools: namespacedTools,
+      fetchedAt: Date.now()
+    });
+
+    logger.info(`Fetched ${tools.length} tools from ${mcp.name}`);
+    return namespacedTools;
+
+  } catch (error: any) {
+    logger.warn(`Failed to fetch tools from ${mcp.name}: ${error.message}`);
+    recordFailure(mcp.name);
+
+    // Return cached tools if available
+    const cached = externalMCPToolsCache.get(mcp.name);
+    if (cached) {
+      return cached.tools;
+    }
+
+    return [];
   }
 }
 
@@ -749,7 +901,13 @@ export function createMCPGateway(app: Express, basePath: string): void {
               continue;
             }
 
-            // TODO: Fetch actual tools from external MCP
+            // Fetch tools from external MCP
+            try {
+              const tools = await fetchExternalMCPTools(mcp);
+              externalTools.push(...tools);
+            } catch (error: any) {
+              logger.warn(`Failed to get tools from ${mcp.name}: ${error.message}`);
+            }
           }
 
           // Get local MCP tools

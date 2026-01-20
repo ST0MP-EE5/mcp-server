@@ -10,16 +10,21 @@ import sys
 import json
 
 # Add plugin root to Python path for imports
+# First try CLAUDE_PLUGIN_ROOT, then fall back to script directory's parent
 PLUGIN_ROOT = os.environ.get('CLAUDE_PLUGIN_ROOT')
-if PLUGIN_ROOT and PLUGIN_ROOT not in sys.path:
+if not PLUGIN_ROOT:
+    # Get the directory containing this script (hooks/), then go up one level
+    PLUGIN_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+if PLUGIN_ROOT not in sys.path:
     sys.path.insert(0, PLUGIN_ROOT)
 
 try:
     from core.config_loader import load_rules
     from core.rule_engine import RuleEngine
 except ImportError as e:
-    error_msg = {"systemMessage": f"Hookify import error: {e}"}
-    print(json.dumps(error_msg), file=sys.stdout)
+    # If imports fail, allow operation silently (don't spam user)
+    print(json.dumps({}), file=sys.stdout)
     sys.exit(0)
 
 
