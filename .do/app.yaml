@@ -48,6 +48,15 @@ services:
       - key: MEM0_API_KEY
         scope: RUN_AND_BUILD_TIME
         type: SECRET
+      - key: LINEAR_API_KEY
+        scope: RUN_AND_BUILD_TIME
+        type: SECRET
+      - key: CONTEXT7_API_KEY
+        scope: RUN_AND_BUILD_TIME
+        type: SECRET
+      - key: EXA_API_KEY
+        scope: RUN_AND_BUILD_TIME
+        type: SECRET
 
 alerts:
   - rule: DEPLOYMENT_FAILED
