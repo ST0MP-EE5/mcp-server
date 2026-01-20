@@ -257,7 +257,7 @@ EOF
 # Run Codex for planning (MCP access if configured via 'codex mcp add')
 codex exec --full-auto --skip-git-repo-check \
   -c model=gpt-5.2-codex \
-  -c model_reasoning_effort=low \
+  -c model_reasoning_effort=xhigh \
   --output-last-message /tmp/codex-plan-result.txt \
   "
 # PLANNING TASK
@@ -426,7 +426,7 @@ EOF
     # Execute implementation with Codex (MCP access if configured)
     codex exec --full-auto --skip-git-repo-check \
       -c model=gpt-5.2-codex \
-      -c model_reasoning_effort=low \
+      -c model_reasoning_effort=xhigh \
       --output-last-message /tmp/codex-phase-${PHASE_NUM}.txt \
       "
 Implement Phase $PHASE_NUM of the plan.
