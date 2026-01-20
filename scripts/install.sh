@@ -141,7 +141,7 @@ echo -e "${YELLOW}Authentication Setup${NC}"
 echo -e "${BLUE}═══════════════════════════════════════════════════════════════${NC}"
 echo ""
 
-read -p "Do you want to authenticate now via GitHub OAuth? (y/n) " -n 1 -r
+read -p "Do you want to authenticate now via GitHub OAuth? (y/n) " -n 1 -r </dev/tty
 echo ""
 
 if [[ $REPLY =~ ^[Yy]$ ]]; then
@@ -161,7 +161,7 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
       echo -e "  2. Enter code: ${YELLOW}$USER_CODE${NC}"
       echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
       echo ""
-      read -p "Press Enter after you've authorized in the browser..."
+      read -p "Press Enter after you've authorized in the browser..." </dev/tty
 
       # Poll for token
       TOKEN_RESPONSE=$(curl -s -X POST "$MCP_SERVER_URL/oauth/token" \
