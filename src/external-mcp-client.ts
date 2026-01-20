@@ -24,8 +24,11 @@ const FAILURE_THRESHOLD = 5;
 const CIRCUIT_RESET_TIME = 60000; // 1 minute
 
 function getAuthHeaders(mcp: MCPConfig): Record<string, string> {
+  // Build headers for Streamable HTTP transport
+  // Accept header MUST include both application/json and text/event-stream per MCP spec
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
+    'Accept': 'application/json, text/event-stream',
   };
 
   if (mcp.auth) {

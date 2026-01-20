@@ -518,9 +518,11 @@ async function routeToExternalMCP(
   try {
     logger.debug(`Routing ${toolName} to ${mcp.name}`, { args });
 
-    // Build authorization headers
+    // Build headers for Streamable HTTP transport
+    // Accept header MUST include both application/json and text/event-stream per MCP spec
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
+      'Accept': 'application/json, text/event-stream',
     };
 
     if (mcp.auth) {
@@ -601,8 +603,10 @@ async function fetchExternalMCPTools(mcp: MCPConfig): Promise<MCPTool[]> {
   }
 
   try {
+    // Build headers for Streamable HTTP transport
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
+      'Accept': 'application/json, text/event-stream',
     };
 
     if (mcp.auth) {
