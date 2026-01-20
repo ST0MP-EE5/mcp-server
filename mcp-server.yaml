@@ -66,6 +66,16 @@ skills:
     file: "./plugins/code-simplifier/agents/code-simplifier.md"
     tags: ["refactoring", "code-quality"]
 
+  - name: "sync-setup"
+    description: "Backup, restore, or transfer Claude Code local setup (hooks, plugins, settings)"
+    file: "./skills/sync-setup.md"
+    tags: ["utility", "setup", "transfer"]
+
+  - name: "codex-plan"
+    description: "Create a detailed implementation plan using Codex 5.2 with xhigh reasoning"
+    file: "./skills/codex-plan.md"
+    tags: ["planning", "codex"]
+
 # Plugins (local plugins with hooks, commands, agents)
 plugins:
   - name: "hookify"
