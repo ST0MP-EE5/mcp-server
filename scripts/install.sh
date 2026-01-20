@@ -10,8 +10,8 @@ NC='\033[0m' # No Color
 
 echo -e "${BLUE}"
 echo "╔══════════════════════════════════════════════════════════════╗"
-echo "║                    MCP Hub Installer                        ║"
-echo "║         AI Infrastructure Hub for Claude Code               ║"
+echo "║                    MCP Hub Installer                         ║"
+echo "║         AI Infrastructure Hub for Claude Code                ║"
 echo "╚══════════════════════════════════════════════════════════════╝"
 echo -e "${NC}"
 
