@@ -141,8 +141,14 @@ echo -e "${YELLOW}Authentication Setup${NC}"
 echo -e "${BLUE}═══════════════════════════════════════════════════════════════${NC}"
 echo ""
 
-read -p "Do you want to authenticate now via GitHub OAuth? (y/n) " -n 1 -r </dev/tty
-echo ""
+# Check if running interactively
+if [ -t 0 ] || [ -e /dev/tty ]; then
+  read -p "Do you want to authenticate now via GitHub OAuth? (y/n) " -n 1 -r </dev/tty 2>/dev/null || REPLY="n"
+  echo ""
+else
+  REPLY="n"
+  echo -e "${YELLOW}Non-interactive mode detected. Skipping OAuth prompt.${NC}"
+fi
 
 if [[ $REPLY =~ ^[Yy]$ ]]; then
   echo -e "${YELLOW}Starting OAuth device flow...${NC}"
@@ -161,7 +167,7 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
       echo -e "  2. Enter code: ${YELLOW}$USER_CODE${NC}"
       echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
       echo ""
-      read -p "Press Enter after you've authorized in the browser..." </dev/tty
+      read -p "Press Enter after you've authorized in the browser..." </dev/tty 2>/dev/null || sleep 10
 
       # Poll for token
       TOKEN_RESPONSE=$(curl -s -X POST "$MCP_SERVER_URL/oauth/token" \
