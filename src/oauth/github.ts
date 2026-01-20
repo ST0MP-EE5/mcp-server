@@ -37,6 +37,30 @@ export interface OAuthToken {
 }
 
 /**
+ * GitHub OAuth poll response - can be either a token or an error
+ */
+interface GitHubPollResponse {
+  access_token?: string;
+  token_type?: string;
+  scope?: string;
+  error?: string;
+  error_description?: string;
+}
+
+/**
+ * JWT payload for authenticated users
+ */
+export interface OAuthJWTPayload {
+  sub: string;
+  github_id: number;
+  name: string | null;
+  email: string | null;
+  type: 'oauth';
+  iat?: number;
+  exp?: number;
+}
+
+/**
  * Start GitHub Device Flow - returns code for user to enter
  */
 export async function startDeviceFlow(config: GitHubOAuthConfig): Promise<DeviceCodeResponse> {
@@ -81,7 +105,7 @@ export async function pollForToken(
     }),
   });
 
-  const data = await response.json() as any;
+  const data = await response.json() as GitHubPollResponse;
 
   if (data.error) {
     if (data.error === 'authorization_pending') {
@@ -97,6 +121,11 @@ export async function pollForToken(
       throw new Error('User denied access.');
     }
     throw new Error(`GitHub OAuth error: ${data.error_description || data.error}`);
+  }
+
+  // Validate required fields are present before returning
+  if (!data.access_token || !data.token_type || !data.scope) {
+    throw new Error('GitHub OAuth response missing required fields');
   }
 
   return {
@@ -147,21 +176,16 @@ export function generateToken(config: GitHubOAuthConfig, user: GitHubUser): stri
 /**
  * Verify JWT and return user info
  */
-export function verifyToken(config: GitHubOAuthConfig, token: string): {
-  sub: string;
-  github_id: number;
-  name: string | null;
-  email: string | null;
-  type: 'oauth';
-} | null {
+export function verifyToken(config: GitHubOAuthConfig, token: string): OAuthJWTPayload | null {
   try {
-    const decoded = jwt.verify(token, config.jwtSecret) as any;
+    const decoded = jwt.verify(token, config.jwtSecret) as OAuthJWTPayload;
     if (decoded.type !== 'oauth') {
       return null;
     }
     return decoded;
-  } catch (error: any) {
-    logger.debug('JWT verification failed', { error: error.message });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    logger.debug('JWT verification failed', { error: message });
     return null;
   }
 }
