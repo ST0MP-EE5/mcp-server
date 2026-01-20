@@ -1,6 +1,28 @@
 # MCP Server Setup Guide
 
-## Quick Start
+## Quick Start (New Machine)
+
+Run the setup script to configure everything automatically:
+
+```bash
+# Set your API key
+export MCP_API_KEY="your_api_key_here"
+
+# Run setup
+curl -fsSL https://raw.githubusercontent.com/ST0MP-EE5/mcp-server/main/scripts/setup-client.sh | bash
+```
+
+Or clone and run locally:
+
+```bash
+git clone https://github.com/ST0MP-EE5/mcp-server.git
+cd mcp-server
+MCP_API_KEY="your_key" ./scripts/setup-client.sh
+```
+
+---
+
+## Manual Setup
 
 ### 1. Clone and Install
 
