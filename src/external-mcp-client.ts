@@ -16,6 +16,32 @@ interface MCPClientState {
   circuitBreakerOpen: boolean;
 }
 
+/**
+ * JSON-RPC 2.0 response structure from MCP servers
+ */
+interface MCPJsonRpcResponse {
+  jsonrpc: '2.0';
+  id: number;
+  result?: unknown;
+  error?: {
+    code: number;
+    message: string;
+    data?: unknown;
+  };
+}
+
+/**
+ * Response from tools/list method
+ */
+interface MCPToolsListResult {
+  tools: MCPTool[];
+}
+
+/**
+ * Arguments for MCP tool calls - JSON-serializable object
+ */
+type MCPToolArguments = Record<string, unknown>;
+
 // Store state for each external MCP
 const mcpClients = new Map<string, MCPClientState>();
 
@@ -42,7 +68,7 @@ function getAuthHeaders(mcp: MCPConfig): Record<string, string> {
   return headers;
 }
 
-async function sendMCPRequest(mcp: MCPConfig, method: string, params?: any): Promise<any> {
+async function sendMCPRequest(mcp: MCPConfig, method: string, params?: Record<string, unknown>): Promise<unknown> {
   const headers = getAuthHeaders(mcp);
   const body = {
     jsonrpc: '2.0',
@@ -62,7 +88,7 @@ async function sendMCPRequest(mcp: MCPConfig, method: string, params?: any): Pro
     throw new Error(`HTTP ${response.status}: ${response.statusText}`);
   }
 
-  const result = await response.json() as { error?: { message?: string }; result?: any };
+  const result = await response.json() as MCPJsonRpcResponse;
 
   if (result.error) {
     throw new Error(result.error.message || JSON.stringify(result.error));
@@ -101,16 +127,17 @@ export async function initializeExternalMCP(mcp: MCPConfig): Promise<void> {
     });
 
     // Fetch available tools
-    const toolsResult = await sendMCPRequest(mcp, 'tools/list');
-    state.tools = toolsResult.tools || [];
+    const toolsResult = await sendMCPRequest(mcp, 'tools/list') as MCPToolsListResult;
+    state.tools = toolsResult?.tools || [];
     state.initialized = true;
     state.lastHealthCheck = new Date();
 
     logger.info(`MCP ${mcp.name} initialized with ${state.tools.length} tools`);
-  } catch (error: any) {
-    state.lastError = error.message;
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    state.lastError = message;
     state.failures++;
-    logger.error(`Failed to initialize MCP ${mcp.name}:`, error.message);
+    logger.error(`Failed to initialize MCP ${mcp.name}:`, message);
   }
 }
 
@@ -139,13 +166,14 @@ export async function fetchExternalMCPTools(mcp: MCPConfig): Promise<MCPTool[]> 
   const toolAge = Date.now() - (state.lastHealthCheck?.getTime() || 0);
   if (toolAge > 300000 || !state.initialized) {
     try {
-      const toolsResult = await sendMCPRequest(mcp, 'tools/list');
-      state.tools = toolsResult.tools || [];
+      const toolsResult = await sendMCPRequest(mcp, 'tools/list') as MCPToolsListResult;
+      state.tools = toolsResult?.tools || [];
       state.initialized = true;
       state.lastHealthCheck = new Date();
       state.failures = 0;
-    } catch (error: any) {
-      state.lastError = error.message;
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      state.lastError = message;
       state.failures++;
 
       if (state.failures >= FAILURE_THRESHOLD) {
@@ -161,8 +189,8 @@ export async function fetchExternalMCPTools(mcp: MCPConfig): Promise<MCPTool[]> 
 export async function routeToExternalMCP(
   mcp: MCPConfig,
   toolName: string,
-  args: any
-): Promise<any> {
+  args: MCPToolArguments
+): Promise<unknown> {
   const state = mcpClients.get(mcp.name);
 
   if (!state || !state.initialized) {
@@ -186,9 +214,10 @@ export async function routeToExternalMCP(
     }
 
     return result;
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (currentState) {
-      currentState.lastError = error.message;
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      currentState.lastError = message;
       currentState.failures++;
 
       if (currentState.failures >= FAILURE_THRESHOLD) {
