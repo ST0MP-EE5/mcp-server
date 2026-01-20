@@ -130,7 +130,7 @@ export class CloudMemoryProvider {
     await this.initialize();
 
     try {
-      const results = await this.client.getAll({
+      const response = await this.client.getAll({
         user_id: options.user_id,
         agent_id: options.agent_id,
         run_id: options.session_id,
@@ -138,7 +138,11 @@ export class CloudMemoryProvider {
         page: options.offset ? Math.floor(options.offset / (options.limit || 50)) + 1 : 1,
       });
 
-      const memories: Memory[] = (results || []).map((r: any) => ({
+      // Handle both array response and paginated object response
+      const resultArray = Array.isArray(response) ? response : (response?.results || []);
+      const total = Array.isArray(response) ? resultArray.length : (response?.count || resultArray.length);
+
+      const memories: Memory[] = resultArray.map((r: any) => ({
         id: r.id,
         memory: r.memory,
         hash: r.hash,
@@ -154,7 +158,7 @@ export class CloudMemoryProvider {
 
       return {
         memories,
-        total: memories.length, // Cloud API doesn't return total, approximate
+        total,
         offset: options.offset || 0,
         limit: options.limit || 50,
       };

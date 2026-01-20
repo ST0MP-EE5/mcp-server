@@ -23,17 +23,11 @@ auth:
 mcps:
   # External MCPs (HTTP-based, proxied through server)
   external:
-    - name: "github"
-      url: "https://api.githubcopilot.com/mcp/"
-      auth:
-        type: "bearer"
-        token: "${GITHUB_PERSONAL_ACCESS_TOKEN}"
-      enabled: true
-
     - name: "linear"
       url: "https://mcp.linear.app/mcp"
       auth:
-        type: "none"
+        type: "bearer"
+        token: "${LINEAR_API_KEY}"
       enabled: true
 
     - name: "greptile"
@@ -43,13 +37,23 @@ mcps:
         token: "${GREPTILE_API_KEY}"
       enabled: true
 
-  # Local MCPs (npm packages or local servers)
-  local:
     - name: "context7"
-      command: "npx"
-      args: ["-y", "@upstash/context7-mcp"]
+      url: "https://mcp.context7.com/mcp"
+      auth:
+        type: "api_key"
+        header: "CONTEXT7_API_KEY"
+        token: "${CONTEXT7_API_KEY}"
       enabled: true
 
+    - name: "exa"
+      url: "https://mcp.exa.ai/mcp?tools=web_search_exa,deep_search_exa,get_code_context_exa,crawling_exa"
+      auth:
+        type: "bearer"
+        token: "${EXA_API_KEY}"
+      enabled: true
+
+  # Local MCPs (npm packages or local servers)
+  local:
     - name: "typescript-lsp"
       command: "typescript-language-server"
       args: ["--stdio"]
@@ -131,9 +135,10 @@ memory:
 secrets:
   provider: "env"
   required:
-    - GITHUB_PERSONAL_ACCESS_TOKEN  # For GitHub MCP
     - GREPTILE_API_KEY              # For Greptile MCP
-    - OPENAI_API_KEY                # For memory embeddings (mem0)
+    - LINEAR_API_KEY                # For Linear MCP
+    - CONTEXT7_API_KEY              # For Context7 MCP
+    - EXA_API_KEY                   # For Exa MCP
+    - MEM0_API_KEY                  # For mem0 cloud memory
   optional:
-    - LINEAR_API_KEY                # Linear uses OAuth, but API key can be used
-    - MEM0_API_KEY                  # For mem0 cloud (optional)
+    - OPENAI_API_KEY                # For mem0 local mode embeddings
