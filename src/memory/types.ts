@@ -4,7 +4,7 @@ export interface Memory {
   id: string;
   memory: string;
   hash?: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
   created_at?: string;
   updated_at?: string;
 }
@@ -18,7 +18,7 @@ export interface AddMemoryOptions {
   user_id: string;
   session_id?: string;
   agent_id?: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export interface SearchMemoryOptions {
