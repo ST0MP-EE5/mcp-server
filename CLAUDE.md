@@ -52,7 +52,8 @@ The `/codex-hybrid` command orchestrates a powerful development workflow combini
 
 **Key Features:**
 - State persistence in `.codex-state/` for context compaction recovery
-- Greptile Ralph Loop enforces 5/5 quality score before advancing phases
+- Local quality gate (tests, lint, types) after each phase
+- Greptile review automatically triggered on PR creation
 - Beads task tracking for progress visibility
 - Optional MCP access for Codex (one-time setup: `codex mcp add mcp-server ...`)
 
