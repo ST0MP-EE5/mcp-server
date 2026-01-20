@@ -54,6 +54,12 @@ CLAUDE: Phase 5 - Finalize (commit, PR, Memory update)
 
 ## Mandatory Tools for Codex
 
+**MCP Setup (One-time)**: To give Codex access to MCP tools, run once:
+```bash
+codex mcp add mcp-server -- npx -y @anthropic/mcp-proxy "https://mcp.m9m.dev/mcp/sse" \
+  --header "Authorization: Bearer YOUR_MCP_TOKEN"
+```
+
 **IMPORTANT**: When launching Codex, ALWAYS instruct it to use:
 
 1. **Beads** (`bd` CLI) - Git-backed task tracking
@@ -194,27 +200,33 @@ After getting answers, compile a comprehensive requirements document that includ
 
 **Goal**: Use Codex with extended reasoning to create a detailed implementation plan.
 
-### 3.1 Extract MCP Token
+### 3.1 Configure MCP for Codex (One-time Setup)
+
+**Note**: Codex MCP is configured separately, not via exec flags. Run this once to give Codex access to MCP tools:
 
 ```bash
-# Extract MCP token from Claude settings for Codex
+# Check if MCP is already configured
+codex mcp list
+
+# If not configured, add the MCP server (one-time setup)
+# Extract token from Claude settings
 MCP_TOKEN=$(node -e "
   const fs = require('fs');
-  try {
-    const settingsPath = process.env.HOME + '/.claude/settings.json';
-    const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
-    const mcpServer = settings.mcpServers?.['mcp-server'];
-    if (mcpServer?.env?.MCP_HEADERS) {
-      const token = mcpServer.env.MCP_HEADERS.replace('Authorization: Bearer ', '');
-      console.log(token);
-    }
-  } catch(e) { }
+  const settings = JSON.parse(fs.readFileSync(process.env.HOME + '/.claude/settings.json'));
+  console.log(settings.mcpServers?.['mcp-server']?.env?.MCP_HEADERS?.replace('Authorization: Bearer ', '') || '');
 " 2>/dev/null)
 
-if [ -z "$MCP_TOKEN" ]; then
-  echo "Warning: Could not extract MCP token. Codex will run without MCP access."
+# Add MCP server to Codex (if token found)
+if [ -n "$MCP_TOKEN" ]; then
+  codex mcp add mcp-server -- npx -y @anthropic/mcp-proxy "https://mcp.m9m.dev/mcp/sse" \
+    --header "Authorization: Bearer $MCP_TOKEN"
+  echo "MCP server configured for Codex"
+else
+  echo "No MCP token found - Codex will run without MCP access"
 fi
 ```
+
+Once configured, Codex automatically has access to MCP tools in all sessions.
 
 ### 3.2 Craft Planning Prompt
 
@@ -242,12 +254,10 @@ cat > .codex-state/phase-0.json << EOF
 }
 EOF
 
-# Run Codex for planning
+# Run Codex for planning (MCP access if configured via 'codex mcp add')
 codex exec --full-auto --skip-git-repo-check \
   -c model=gpt-5.2-codex \
   -c model_reasoning_effort=low \
-  ${MCP_TOKEN:+--mcp-server="https://mcp.m9m.dev/mcp/sse"} \
-  ${MCP_TOKEN:+--mcp-header="Authorization: Bearer $MCP_TOKEN"} \
   --output-last-message /tmp/codex-plan-result.txt \
   "
 # PLANNING TASK
@@ -413,12 +423,10 @@ EOF
     ATTEMPT=$((ATTEMPT + 1))
     echo "Phase $PHASE_NUM - Attempt $ATTEMPT/$MAX_ATTEMPTS"
 
-    # Execute implementation with Codex
+    # Execute implementation with Codex (MCP access if configured)
     codex exec --full-auto --skip-git-repo-check \
       -c model=gpt-5.2-codex \
       -c model_reasoning_effort=low \
-      ${MCP_TOKEN:+--mcp-server="https://mcp.m9m.dev/mcp/sse"} \
-      ${MCP_TOKEN:+--mcp-header="Authorization: Bearer $MCP_TOKEN"} \
       --output-last-message /tmp/codex-phase-${PHASE_NUM}.txt \
       "
 Implement Phase $PHASE_NUM of the plan.

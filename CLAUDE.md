@@ -51,10 +51,10 @@ The `/codex-hybrid` command orchestrates a powerful development workflow combini
 5. **Finalization (Claude)** - Git commit, PR creation, Memory updates
 
 **Key Features:**
-- Auto-injects MCP token from environment for Codex MCP access
 - State persistence in `.codex-state/` for context compaction recovery
 - Greptile Ralph Loop enforces 5/5 quality score before advancing phases
 - Beads task tracking for progress visibility
+- Optional MCP access for Codex (one-time setup: `codex mcp add mcp-server ...`)
 
 **Usage:**
 ```
