@@ -1,455 +1,309 @@
-# MCP Server Template
+# MCP Server
 
-A self-hosted **Model Context Protocol (MCP)** server template for AI-native development. Deploy your own MCP server with custom tools, skills, and integrations for Claude, Cursor, Windsurf, and other AI coding assistants.
+A self-hosted **Model Context Protocol (MCP)** server with persistent memory, OAuth authentication, and external MCP proxying. Deploy your own MCP server for Claude Code, Codex, and other AI coding assistants.
+
+**Live Server**: `https://mcp.m9m.dev`
 
 ## Features
 
-- **MCP Gateway** - SSE-based protocol server for AI tool integration
-- **Tool Registry** - Manage and expose tools to AI clients
-- **Skills System** - Reusable instruction sets for AI assistants
-- **API Key Auth** - Secure access control with permissions
-- **Hot Reload** - Config changes apply without restart
-- **Local MCPs** - Run custom MCP servers (e.g., DigitalOcean tools)
-- **External MCPs** - Proxy to services like Stripe, Vercel, GitHub
+- **GitHub OAuth** - Authenticate with GitHub Device Flow (no redirect URLs needed)
+- **Persistent Memory** - Cross-session memory powered by mem0 (26% accuracy improvement)
+- **External MCP Proxy** - GitHub, Greptile, Linear, Context7 tools
+- **Plugin System** - Hookify for behavior rules, Ralph Loop for iterative development
+- **Skills Registry** - Reusable instruction sets for AI assistants
+- **SSE Protocol** - Real-time MCP communication
 
 ## Quick Start
 
-```bash
-# 1. Clone and install
-git clone https://github.com/YOUR_USERNAME/mcp-server.git
-cd mcp-server
-npm install
-
-# 2. Initialize
-cp .env.example .env
-# Edit mcp-server.yaml with your settings
-
-# 3. Generate API key
-node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
-# Add the hash to mcp-server.yaml
-
-# 4. Start
-npm run dev   # Development with hot-reload
-npm start     # Production
-```
-
-## Project Structure
-
-```
-mcp-server/
-├── mcp-server.yaml    # Main configuration
-├── .env               # Environment secrets
-├── src/               # TypeScript source
-│   ├── index.ts       # Server entry point
-│   ├── cli.ts         # CLI tool
-│   ├── mcp-gateway.ts # MCP protocol handler
-│   └── ...
-├── mcps/              # Local MCP servers
-│   └── digitalocean/  # Example: DO tools (32 tools)
-├── skills/            # Instruction sets
-├── configs/           # IDE configs
-├── plugins/           # Extended capabilities
-└── hooks/             # Event handlers
-```
-
-## CLI Commands
-
-All commands output JSON. Use `mcp-server` after global install or `npm run cli`.
+### For Users (Connect to Existing Server)
 
 ```bash
-# Initialization
-mcp-server init [name]              # Initialize new server
-
-# Status
-mcp-server status                   # System health and stats
-
-# API Keys
-mcp-server key generate <name>      # Generate new API key
-mcp-server key list                 # List keys (hashes only)
-mcp-server key revoke <name>        # Revoke a key
-
-# MCP Management
-mcp-server mcp list                 # List all MCPs
-mcp-server mcp add <name> <url>     # Add external MCP
-mcp-server mcp test <name>          # Test connection
-mcp-server mcp enable <name>        # Enable MCP
-mcp-server mcp disable <name>       # Disable MCP
-
-# Skills
-mcp-server skill list               # List skills
-mcp-server skill add <name> [desc]  # Add skill
-mcp-server skill get <name>         # Get skill content
-
-# Server
-mcp-server server start [--daemon]  # Start server
-mcp-server server stop              # Stop daemon
-mcp-server server logs              # View logs
-
-# Deployment
-mcp-server deploy app-spec          # Generate DO App Platform spec
-mcp-server deploy app-create        # Deploy to DO
-mcp-server deploy droplet-script    # Generate droplet setup script
+# Authenticate with GitHub
+curl -s -X POST https://mcp.m9m.dev/oauth/device | jq '.'
+# Go to the URL shown, enter the code
+curl -s -X POST https://mcp.m9m.dev/oauth/token \
+  -H "Content-Type: application/json" \
+  -d '{"user_code":"YOUR-CODE"}' | jq '.access_token'
 ```
 
-## Configuration (mcp-server.yaml)
-
-```yaml
-version: "1.0"
-name: "my-mcp-server"
-
-auth:
-  api_keys:
-    - name: "claude-ai"
-      key_hash: "sha256:..."  # Hash of your API key
-      permissions: ["*"]
-
-mcps:
-  external:
-    - name: "stripe"
-      url: "https://mcp.stripe.com"
-      auth:
-        type: "bearer"
-        token: "${STRIPE_MCP_TOKEN}"
-      enabled: true
-
-  local:
-    - name: "digitalocean"
-      path: "./mcps/digitalocean"
-      port: 3001
-      enabled: true
-
-skills:
-  - name: "code-review"
-    description: "Code review guidelines"
-    file: "./skills/code-review.md"
-    tags: ["dev"]
-
-configs:
-  cursor:
-    file: "./configs/.cursorrules"
-```
-
-## API Endpoints
-
-| Endpoint | Method | Auth | Description |
-|----------|--------|------|-------------|
-| `/health` | GET | No | Health check |
-| `/mcp/health` | GET | No | Detailed MCP status |
-| `/mcp/sse` | GET | Yes | SSE connection |
-| `/mcp/messages` | POST | Yes | MCP messages |
-| `/api/v1/registry` | GET | Yes | Full registry |
-| `/api/v1/skills/:name` | GET | Yes | Skill content |
-
-## Built-in Tools
-
-When connected via MCP, these tools are available:
-
-| Tool | Description |
-|------|-------------|
-| `mcp__list_mcps` | List all available MCPs |
-| `mcp__list_skills` | List all skills |
-| `mcp__get_skill` | Get skill content by name |
-| `mcp__list_configs` | List available configs |
-| `mcp__get_config` | Get config content |
-| `mcp__health` | Check server health |
-
----
-
-# DigitalOcean Deployment Guide
-
-## Option 1: App Platform (Recommended)
-
-**Cost**: ~$5/month | **Difficulty**: Easy | **SSL**: Automatic
-
-### Prerequisites
-- DigitalOcean account with billing enabled
-- GitHub account with repo access
-- `doctl` CLI installed (optional)
-
-### Step-by-Step Setup
-
-#### 1. Prepare Your Repository
-
-```bash
-# Fork/clone this template
-git clone https://github.com/YOUR_USERNAME/mcp-server.git
-cd mcp-server
-
-# Install dependencies and verify build
-npm install
-npm run build
-
-# Create .env with your tokens
-cp .env.example .env
-# Edit .env: DO_API_TOKEN=dop_v1_your_token_here
-
-# Commit and push
-git add .
-git commit -m "Initial setup"
-git push origin main
-```
-
-#### 2. Create App via DigitalOcean Console
-
-1. Go to [DigitalOcean App Platform](https://cloud.digitalocean.com/apps)
-2. Click **Create App**
-3. Select **GitHub** as source
-4. Authorize and select your `mcp-server` repository
-5. Configure:
-   - **Branch**: `main`
-   - **Source Directory**: `/` (root)
-   - **Autodeploy**: Enabled
-
-6. Configure Build Settings:
-   - **Build Command**: `npm ci --include=dev && npm run build`
-   - **Run Command**: `npm start`
-
-7. Choose Plan:
-   - **Basic** ($5/month) - Good for personal use
-   - **Professional** ($12/month) - For production
-
-8. Add Environment Variables:
-   ```
-   NODE_ENV = production
-   DO_API_TOKEN = dop_v1_your_token_here (mark as SECRET)
-   ```
-
-9. Click **Create Resources**
-
-#### 3. Create App via CLI (Alternative)
-
-```bash
-# Install doctl
-brew install doctl  # macOS
-# or: snap install doctl  # Linux
-
-# Authenticate
-doctl auth init
-# Enter your DO API token when prompted
-
-# Update .do/app.yaml with your repo
-# Change: repo: YOUR_USERNAME/mcp-server
-
-# Create the app
-doctl apps create --spec .do/app.yaml
-
-# Get your app ID
-doctl apps list
-
-# Update with secrets (create .do/app-with-secrets.yaml with token value)
-doctl apps update <APP_ID> --spec .do/app-with-secrets.yaml
-```
-
-#### 4. Verify Deployment
-
-```bash
-# Get your app URL
-doctl apps get <APP_ID> --format DefaultIngress
-
-# Test health endpoint
-curl https://your-app.ondigitalocean.app/health
-# Expected: {"ok":true,"status":"healthy",...}
-
-# Test MCP health
-curl https://your-app.ondigitalocean.app/mcp/health
-```
-
----
-
-## Option 2: Droplet (VPS)
-
-**Cost**: $4-6/month | **Difficulty**: Medium | **SSL**: Manual
-
-### Step-by-Step Setup
-
-#### 1. Create Droplet
-
-1. Go to [DigitalOcean Droplets](https://cloud.digitalocean.com/droplets)
-2. Click **Create Droplet**
-3. Choose:
-   - **Image**: Ubuntu 22.04 LTS
-   - **Plan**: Basic $4/month (1GB RAM)
-   - **Region**: Closest to you
-   - **Authentication**: SSH Key (recommended)
-4. Click **Create Droplet**
-
-#### 2. Initial Server Setup
-
-```bash
-# SSH into your droplet
-ssh root@YOUR_DROPLET_IP
-
-# Update system
-apt update && apt upgrade -y
-
-# Install Node.js 20
-curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
-apt install -y nodejs
-
-# Create app user
-useradd -m -s /bin/bash mcp
-```
-
-#### 3. Deploy Application
-
-```bash
-# Clone your repo
-git clone https://github.com/YOUR_USERNAME/mcp-server.git /opt/mcp-server
-cd /opt/mcp-server
-
-# Install and build
-npm ci --production
-npm run build
-
-# Create .env
-cat > .env << EOF
-DO_API_TOKEN=dop_v1_your_token_here
-NODE_ENV=production
-PORT=3000
-EOF
-
-# Set ownership
-chown -R mcp:mcp /opt/mcp-server
-```
-
-#### 4. Create Systemd Service
-
-```bash
-cat > /etc/systemd/system/mcp-server.service << 'EOF'
-[Unit]
-Description=MCP Server
-After=network.target
-
-[Service]
-Type=simple
-User=mcp
-WorkingDirectory=/opt/mcp-server
-ExecStart=/usr/bin/node dist/index.js
-Restart=always
-RestartSec=10
-Environment=NODE_ENV=production
-
-[Install]
-WantedBy=multi-user.target
-EOF
-
-# Enable and start
-systemctl daemon-reload
-systemctl enable mcp-server
-systemctl start mcp-server
-```
-
-#### 5. Setup Firewall
-
-```bash
-ufw allow 22/tcp
-ufw allow 3000/tcp
-ufw enable
-```
-
-#### 6. Setup SSL with Nginx (Recommended)
-
-```bash
-# Install Nginx and Certbot
-apt install -y nginx certbot python3-certbot-nginx
-
-# Create Nginx config
-cat > /etc/nginx/sites-available/mcp-server << 'EOF'
-server {
-    listen 80;
-    server_name your-domain.com;
-
-    location / {
-        proxy_pass http://localhost:3000;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_buffering off;  # Required for SSE
-        proxy_read_timeout 86400;
-    }
-}
-EOF
-
-# Enable and get SSL
-ln -s /etc/nginx/sites-available/mcp-server /etc/nginx/sites-enabled/
-nginx -t && systemctl restart nginx
-certbot --nginx -d your-domain.com
-```
-
----
-
-## Option 3: Docker
-
-```bash
-# Build and run
-docker build -t mcp-server .
-docker run -d \
-  --name mcp-server \
-  -p 3000:3000 \
-  -v $(pwd)/mcp-server.yaml:/app/mcp-server.yaml:ro \
-  -v $(pwd)/.env:/app/.env:ro \
-  --restart unless-stopped \
-  mcp-server
-
-# Or use docker-compose
-docker-compose up -d
-```
-
----
-
-## Connecting AI Clients
-
-### Claude Code / Claude.ai
+Add to `~/.claude/settings.json`:
 ```json
 {
   "mcpServers": {
-    "my-server": {
-      "url": "https://your-app.ondigitalocean.app/mcp/sse",
-      "headers": {
-        "Authorization": "Bearer YOUR_API_KEY"
+    "mcp-server": {
+      "command": "npx",
+      "args": ["-y", "mcp-remote", "https://mcp.m9m.dev/mcp/sse"],
+      "env": {
+        "MCP_HEADERS": "Authorization: Bearer YOUR_TOKEN"
       }
     }
   }
 }
 ```
 
-### Cursor
-Add to `.cursor/mcp.json`:
+### For Developers (Self-Host)
+
+```bash
+git clone https://github.com/ST0MP-EE5/mcp-server.git
+cd mcp-server
+npm install
+cp .env.example .env  # Configure your secrets
+npm run dev
+```
+
+See [SETUP.md](./SETUP.md) for detailed setup instructions.
+
+## Project Structure
+
+```
+mcp-server/
+├── mcp-server.yaml      # Main configuration
+├── .env                 # Environment secrets
+├── src/                 # TypeScript source
+│   ├── index.ts         # Server entry point
+│   ├── mcp-gateway.ts   # MCP protocol + memory tools
+│   ├── memory/          # mem0 integration
+│   └── oauth/           # GitHub OAuth
+├── plugins/             # Claude Code plugins
+│   ├── hookify/         # Behavior rules engine
+│   ├── ralph-loop/      # Iterative AI loops
+│   ├── code-simplifier/ # Code simplification skill
+│   └── external/        # External MCP templates
+│       ├── github/
+│       ├── greptile/
+│       ├── linear/
+│       └── context7/
+├── hooks/               # Reusable hookify rules
+├── configs/             # IDE configs (CLAUDE.md, AGENTS.md)
+└── specs/               # Feature specifications
+```
+
+## Available Tools
+
+### Hub Tools (Built-in)
+
+| Tool | Description |
+|------|-------------|
+| `mcp__mcp-server__mcp__list_mcps` | List all connected MCPs |
+| `mcp__mcp-server__mcp__list_skills` | List available skills |
+| `mcp__mcp-server__mcp__get_skill` | Get skill content |
+| `mcp__mcp-server__mcp__health` | Server health check |
+
+### Memory Tools (mem0)
+
+| Tool | Description |
+|------|-------------|
+| `mcp__memory_add` | Store memories from messages |
+| `mcp__memory_search` | Semantic search over memories |
+| `mcp__memory_list` | List all memories with pagination |
+| `mcp__memory_delete` | Delete specific memory |
+| `mcp__memory_delete_all` | Delete all memories (scoped to user) |
+
+### External MCPs
+
+| MCP | Tools Available |
+|-----|-----------------|
+| **GitHub** | Repository management, issues, PRs, code search |
+| **Greptile** | AI-powered codebase search and understanding |
+| **Linear** | Project management, issues, cycles |
+| **Context7** | Context management |
+
+## Authentication
+
+### GitHub OAuth (Recommended)
+
+```bash
+# 1. Start device flow
+curl -s -X POST https://mcp.m9m.dev/oauth/device
+
+# 2. Go to https://github.com/login/device and enter the code
+
+# 3. Get your token
+curl -s -X POST https://mcp.m9m.dev/oauth/token \
+  -H "Content-Type: application/json" \
+  -d '{"user_code":"YOUR-CODE"}'
+```
+
+Tokens are valid for 30 days. Memories are scoped to your GitHub username.
+
+### API Key (Legacy)
+
+Generate a key and add its hash to `mcp-server.yaml`:
+```bash
+openssl rand -hex 32
+echo -n "your_key" | shasum -a 256 | awk '{print "sha256:"$1}'
+```
+
+## Configuration
+
+### mcp-server.yaml
+
+```yaml
+version: "1.0"
+name: "mcp-server"
+
+auth:
+  oauth:
+    enabled: true
+    provider: "github"
+    client_id: "${GITHUB_CLIENT_ID}"
+    jwt_secret: "${JWT_SECRET}"
+    token_expiry: "30d"
+
+mcps:
+  external:
+    - name: "github"
+      url: "https://api.githubcopilot.com/mcp/"
+      auth:
+        type: "bearer"
+        token: "${GITHUB_PERSONAL_ACCESS_TOKEN}"
+      enabled: true
+
+    - name: "greptile"
+      url: "https://api.greptile.com/mcp"
+      auth:
+        type: "bearer"
+        token: "${GREPTILE_API_KEY}"
+      enabled: true
+
+    - name: "linear"
+      url: "https://mcp.linear.app/mcp"
+      auth:
+        type: "none"
+      enabled: true
+
+  local:
+    - name: "context7"
+      command: "npx"
+      args: ["-y", "@upstash/context7-mcp"]
+      enabled: true
+
+memory:
+  enabled: true
+  provider: "cloud"
+  cloud:
+    apiKey: "${MEM0_API_KEY}"
+
+plugins:
+  - name: "hookify"
+    path: "./plugins/hookify"
+    enabled: true
+
+  - name: "ralph-loop"
+    path: "./plugins/ralph-loop"
+    enabled: true
+
+skills:
+  - name: "code-simplifier"
+    file: "./plugins/code-simplifier/agents/code-simplifier.md"
+    tags: ["refactoring", "code-quality"]
+```
+
+### Required Environment Variables
+
+```bash
+# OAuth
+GITHUB_CLIENT_ID=your_github_oauth_app_client_id
+JWT_SECRET=your_jwt_secret_for_signing_tokens
+
+# External MCPs
+GITHUB_PERSONAL_ACCESS_TOKEN=ghp_your_token
+GREPTILE_API_KEY=your_greptile_key
+
+# Memory
+MEM0_API_KEY=your_mem0_api_key
+```
+
+## Plugins
+
+### Hookify
+
+Create rules to prevent unwanted behaviors:
+- Warn before dangerous commands (`rm -rf`)
+- Block hardcoded secrets
+- Enforce code quality standards
+
+See [hooks/](./hooks/) for available rules.
+
+### Ralph Loop (Ralph Wiggum)
+
+Run Claude in a continuous loop for iterative development tasks.
+
+## API Endpoints
+
+| Endpoint | Method | Auth | Description |
+|----------|--------|------|-------------|
+| `/health` | GET | No | Basic health check |
+| `/mcp/health` | GET | No | Detailed health with MCP status |
+| `/mcp/sse` | GET | Yes | SSE connection for MCP clients |
+| `/mcp/messages` | POST | Yes | MCP message handler |
+| `/oauth/device` | POST | No | Start GitHub device flow |
+| `/oauth/token` | POST | No | Exchange code for token |
+| `/api/v1/registry` | GET | Yes | Full resource registry |
+| `/api/v1/skills/:name` | GET | Yes | Get skill content |
+
+## Deployment
+
+### DigitalOcean App Platform (Recommended)
+
+```bash
+doctl apps create --spec .do/app.yaml
+```
+
+See [SETUP.md](./SETUP.md) for detailed deployment instructions.
+
+### Docker
+
+```bash
+docker build -t mcp-server .
+docker run -d -p 3000:3000 --env-file .env mcp-server
+```
+
+## Development
+
+```bash
+npm run dev      # Development with hot-reload
+npm run build    # Build TypeScript
+npm start        # Production
+npm run lint     # ESLint
+npm test         # Run tests
+```
+
+## Client Setup
+
+### Claude Code
+
 ```json
 {
-  "servers": {
-    "my-server": {
-      "url": "https://your-app.ondigitalocean.app/mcp/sse",
-      "apiKey": "YOUR_API_KEY"
+  "mcpServers": {
+    "mcp-server": {
+      "command": "npx",
+      "args": ["-y", "mcp-remote", "https://mcp.m9m.dev/mcp/sse"],
+      "env": {
+        "MCP_HEADERS": "Authorization: Bearer YOUR_TOKEN"
+      }
     }
   }
 }
 ```
 
----
+### OpenAI Codex
 
-## Troubleshooting
-
-| Issue | Solution |
-|-------|----------|
-| Build fails "tsc not found" | Use `npm ci --include=dev` |
-| 502 Bad Gateway | Check service status, verify port |
-| Connection refused | Check firewall rules |
-| SSL errors | Run `certbot renew` |
-
-### Logs
-
-```bash
-# App Platform
-doctl apps logs <APP_ID> --type run
-
-# Droplet
-journalctl -u mcp-server -f
+Create `codex.json` in your project:
+```json
+{
+  "mcpServers": {
+    "mcp-server": {
+      "url": "https://mcp.m9m.dev/mcp/sse",
+      "headers": {
+        "Authorization": "Bearer YOUR_TOKEN"
+      }
+    }
+  }
+}
 ```
 
----
+Run: `codex --mcp-config codex.json`
 
 ## License
 
