@@ -16,6 +16,7 @@ import type {
 } from './types.js';
 
 // Dynamic import for mem0ai OSS (ESM)
+// Note: mem0ai SDK does not provide TypeScript definitions, so we use `any` for the client
 let Mem0Class: any = null;
 
 async function getMem0Class() {
